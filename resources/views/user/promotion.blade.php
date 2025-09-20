@@ -60,22 +60,19 @@
              <tbody>
 
                @php
-                  $commission = App\Models\Commission::find(1);
+                  $userRank = auth()->user()->rank ?? 1;
+                  $commissionLevels = App\Models\ReferralCommissionLevel::where('rank_id', $userRank)
+                                        ->where('is_active', true)
+                                        ->orderBy('level')
+                                        ->get();
                @endphp
+               
+               @foreach($commissionLevels as $level)
                 <tr>
-                   <td><strong>LEVEL 1</strong></td>
-                   <td>{{ $commission->refer_com1 }}%</td>
+                   <td><strong>LEVEL {{ $level->level }}</strong></td>
+                   <td>{{ $level->commission_rate }}%</td>
                 </tr>
-
-                <tr>
-                   <td><strong>LEVEL 2</strong></td>
-                   <td>{{ $commission->refer_com2 }}%</td>
-                </tr>
-
-                <tr>
-                   <td><strong>LEVEL 3</strong></td>
-                   <td>1.00%</td>
-                </tr>
+               @endforeach
                 
              </tbody>
           </table>

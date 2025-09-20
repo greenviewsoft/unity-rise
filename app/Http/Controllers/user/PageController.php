@@ -740,7 +740,8 @@ class PageController extends Controller
                     $refercommission->level = 1;
                     $refercommission->rank = $firstuser->rank ?? 1;
                     $refercommission->investment_amount = $balance;
-                    $refercommission->commission_amount = ($balance / 100) * $commission->refer_com1;
+                    $commissionRate1 = \App\Models\ReferralCommissionLevel::getCommissionRatesForRank($firstuser->rank ?? 1, 1);
+                    $refercommission->commission_amount = ($balance / 100) * $commissionRate1;
                     $refercommission->commission_date = now();
                     $refercommission->save();
 
@@ -758,7 +759,7 @@ class PageController extends Controller
                             'new_balance' => $firstuser->balance,
                             'metadata' => [
                                 'deposit_amount' => $balance,
-                                'commission_rate' => $commission->refer_com1,
+                                'commission_rate' => $commissionRate1,
                                 'commission_level' => 1,
                                 'referred_user_id' => $user->id,
                                 'previous_refer_commission' => $previousReferCommission
@@ -781,13 +782,31 @@ class PageController extends Controller
                         $refercommission2->level = 2;
                         $refercommission2->rank = $seconduser->rank ?? 1;
                         $refercommission2->investment_amount = $balance;
-                        $refercommission2->commission_amount = ($balance / 100) * $commission->refer_com2;
+                        $commissionRate2 = \App\Models\ReferralCommissionLevel::getCommissionRatesForRank($seconduser->rank ?? 1, 2);
+                        $refercommission2->commission_amount = ($balance / 100) * $commissionRate2;
                         $refercommission2->commission_date = now();
                         $refercommission2->save();
 
+                            $previousBalance = $seconduser->balance;
+                            $previousReferCommission = $seconduser->refer_commission;
                             $seconduser->refer_commission = $seconduser->refer_commission + $refercommission2->commission_amount;
                         $seconduser->balance = $seconduser->balance + $refercommission2->commission_amount;
                             $seconduser->save();
+                            
+                            // Create transaction log
+                            $seconduser->createTransactionLog([
+                                'type' => 'deposit_referral_commission',
+                                'amount' => $refercommission2->commission_amount,
+                                'previous_balance' => $previousBalance,
+                                'new_balance' => $seconduser->balance,
+                                'metadata' => [
+                                    'deposit_amount' => $balance,
+                                    'commission_rate' => $commissionRate2,
+                                    'commission_level' => 2,
+                                    'referred_user_id' => $user->id,
+                                    'previous_refer_commission' => $previousReferCommission
+                                ]
+                            ]);
 
                             //save history
                             $history = new History();
@@ -805,13 +824,31 @@ class PageController extends Controller
                             $refercommission3->level = 3;
                             $refercommission3->rank = $thirduser->rank ?? 1;
                             $refercommission3->investment_amount = $balance;
-                            $refercommission3->commission_amount = ($balance / 100) * $commission->refer_com3;
+                            $commissionRate3 = \App\Models\ReferralCommissionLevel::getCommissionRatesForRank($thirduser->rank ?? 1, 3);
+                        $refercommission3->commission_amount = ($balance / 100) * $commissionRate3;
                             $refercommission3->commission_date = now();
                             $refercommission3->save();
 
+                                $previousBalance = $thirduser->balance;
+                                $previousReferCommission = $thirduser->refer_commission;
                                 $thirduser->refer_commission = $thirduser->refer_commission + $refercommission3->commission_amount;
                             $thirduser->balance = $thirduser->balance + $refercommission3->commission_amount;
                                 $thirduser->save();
+                                
+                                // Create transaction log
+                                $thirduser->createTransactionLog([
+                                    'type' => 'deposit_referral_commission',
+                                    'amount' => $refercommission3->commission_amount,
+                                    'previous_balance' => $previousBalance,
+                                    'new_balance' => $thirduser->balance,
+                                    'metadata' => [
+                                        'deposit_amount' => $balance,
+                                        'commission_rate' => $commissionRate3,
+                                        'commission_level' => 3,
+                                        'referred_user_id' => $user->id,
+                                        'previous_refer_commission' => $previousReferCommission
+                                    ]
+                                ]);
 
                                 //save history
                                 $history = new History();
@@ -829,13 +866,31 @@ class PageController extends Controller
                                     $refercommission4->level = 4;
                                     $refercommission4->rank = $fourthuser->rank ?? 1;
                                     $refercommission4->investment_amount = $balance;
-                                    $refercommission4->commission_amount = ($balance / 100) * $commission->refer_com4;
+                                    $commissionRate4 = \App\Models\ReferralCommissionLevel::getCommissionRatesForRank($fourthuser->rank ?? 1, 4);
+                        $refercommission4->commission_amount = ($balance / 100) * $commissionRate4;
                                     $refercommission4->commission_date = now();
                                     $refercommission4->save();
 
+                                    $previousBalance = $fourthuser->balance;
+                                    $previousReferCommission = $fourthuser->refer_commission;
                                     $fourthuser->refer_commission = $fourthuser->refer_commission + $refercommission4->commission_amount;
                                     $fourthuser->balance = $fourthuser->balance + $refercommission4->commission_amount;
                                     $fourthuser->save();
+                                    
+                                    // Create transaction log
+                                    $fourthuser->createTransactionLog([
+                                        'type' => 'deposit_referral_commission',
+                                        'amount' => $refercommission4->commission_amount,
+                                        'previous_balance' => $previousBalance,
+                                        'new_balance' => $fourthuser->balance,
+                                        'metadata' => [
+                                            'deposit_amount' => $balance,
+                                            'commission_rate' => $commissionRate4,
+                                            'commission_level' => 4,
+                                            'referred_user_id' => $user->id,
+                                            'previous_refer_commission' => $previousReferCommission
+                                        ]
+                                    ]);
 
                                     //save history
                                     $history = new History();
