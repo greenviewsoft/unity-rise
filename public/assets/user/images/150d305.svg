@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="35.85" height="29" viewBox="0 0 35.85 29">
+  <defs>
+    <linearGradient id="linear-gradient" x1="0.5" y1="0.135" x2="0.5" y2="0.625" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#fedc96"/>
+      <stop offset="1" stop-color="#fbce6f"/>
+    </linearGradient>
+    <clipPath id="clip-VIP2小標">
+      <rect width="35.85" height="29"/>
+    </clipPath>
+  </defs>
+  <g id="VIP2小標" clip-path="url(#clip-VIP2小標)">
+    <g id="Group_66794" data-name="Group 66794" transform="translate(13734.853 13773.5)">
+      <path id="Path_67479" data-name="Path 67479" d="M0,0H32L28.147,6h-32Z" transform="translate(-13731 -13773.5)" fill="#efbf5b"/>
+      <g id="Group_66793" data-name="Group 66793" transform="translate(-13731 -13773.5)">
+        <path id="Path_67417" data-name="Path 67417" d="M32,0V27.754a1.254,1.254,0,0,1-1.616,1.193L16.36,24.8a1.272,1.272,0,0,0-.72,0L1.616,28.946A1.254,1.254,0,0,1,0,27.754V0Z" transform="translate(0 0)" fill="url(#linear-gradient)"/>
+      </g>
+      <path id="Path_67481" data-name="Path 67481" d="M1.3-8.4-2.256,0H-5.04L-8.592-8.4h3.048l2,4.908L-1.488-8.4Zm6.84,6.2V0H1.4V-1.74L4.44-4.548a2.505,2.505,0,0,0,.528-.636A1.149,1.149,0,0,0,5.1-5.7a.6.6,0,0,0-.21-.486.927.927,0,0,0-.606-.174,1.364,1.364,0,0,0-.72.2,1.338,1.338,0,0,0-.516.576L.912-6.648a3.506,3.506,0,0,1,1.4-1.422,4.471,4.471,0,0,1,2.232-.522,4.505,4.505,0,0,1,1.764.324,2.757,2.757,0,0,1,1.2.924,2.3,2.3,0,0,1,.432,1.38,2.944,2.944,0,0,1-.294,1.3A4.881,4.881,0,0,1,6.5-3.288L5.3-2.2Z" transform="translate(-13715 -13755.5)" fill="#333"/>
+    </g>
+  </g>
+</svg>

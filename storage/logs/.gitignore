@@ -1,0 +1,35 @@
+# Laravel & PHP
+/vendor
+/node_modules
+/public/storage
+/storage/*.key
+/.idea
+/.vscode
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+.env
+.env.backup
+.env.example.local
+
+# Laravel Cache & Logs
+/bootstrap/cache/*.php
+/storage/logs/*.log
+/storage/framework/cache/data
+/storage/framework/sessions
+/storage/framework/testing
+/storage/framework/views/*.php
+
+# Composer & npm
+composer.lock
+package-lock.json
+pnpm-lock.yaml
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Deployment specific
+/.cPanel
+/deploy.sh

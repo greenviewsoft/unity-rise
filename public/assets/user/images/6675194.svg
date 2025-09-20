@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="80" height="80" viewBox="0 0 80 80">
+  <defs>
+    <clipPath id="clip-指南页_手机号绑定_2">
+      <rect width="80" height="80"/>
+    </clipPath>
+  </defs>
+  <g id="指南页_手机号绑定_2" data-name="指南页_手机号绑定 – 2" clip-path="url(#clip-指南页_手机号绑定_2)">
+    <g id="Group_40883" data-name="Group 40883" transform="translate(-265 -642)">
+      <g id="Group_40881" data-name="Group 40881">
+        <path id="Path_67435" data-name="Path 67435" d="M40,0A40,40,0,1,1,0,40,40,40,0,0,1,40,0Z" transform="translate(265 642)" fill="#c5c8d2"/>
+      </g>
+      <g id="Group_40862" data-name="Group 40862" transform="translate(-2.99 9.001)">
+        <g id="noun_Lock_747565" transform="translate(286.33 655.034)">
+          <path id="Path_55782" data-name="Path 55782" d="M42.446,21.262h-1.1l0-5.466a10.8,10.8,0,0,0-21.6.009l.009,5.466h-.391a3.709,3.709,0,0,0-3.7,3.712V41.258a3.713,3.713,0,0,0,3.712,3.708l23.083-.013a3.7,3.7,0,0,0,3.7-3.708V24.965A3.709,3.709,0,0,0,42.446,21.262Zm-18.713.009L23.724,15.8A6.819,6.819,0,1,1,37.361,15.8l.009,5.466Z" transform="translate(-15.66 -5)" fill="#fff"/>
+        </g>
+        <g id="Group_40861" data-name="Group 40861" transform="translate(298.701 651)">
+          <g id="Rectangle_63038" data-name="Rectangle 63038" transform="translate(0 0)" fill="#c5c8d2" stroke="#fff" stroke-width="2">
+            <rect width="30.949" height="14.148" rx="7.074" stroke="none"/>
+            <rect x="1" y="1" width="28.949" height="12.148" rx="6.074" fill="none"/>
+          </g>
+          <g id="Group_40860" data-name="Group 40860" transform="translate(7.958 5.306)">
+            <circle id="Ellipse_6284" data-name="Ellipse 6284" cx="1.769" cy="1.769" r="1.769" fill="#fff"/>
+            <circle id="Ellipse_6284-2" data-name="Ellipse 6284" cx="1.769" cy="1.769" r="1.769" transform="translate(6.19)" fill="#fff"/>
+            <circle id="Ellipse_6284-3" data-name="Ellipse 6284" cx="1.769" cy="1.769" r="1.769" transform="translate(12.38)" fill="#fff"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

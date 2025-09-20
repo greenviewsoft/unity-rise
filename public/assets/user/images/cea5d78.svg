@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="184" height="100" viewBox="0 0 184 100">
+  <defs>
+    <clipPath id="clip-path">
+      <rect id="Rectangle_55273" data-name="Rectangle 55273" width="79.082" height="97.786" fill="none"/>
+    </clipPath>
+    <linearGradient id="linear-gradient" x1="0.5" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#f2f2f2"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="0.5" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#e3e3e3"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-5" x1="0.5" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#bebebe"/>
+    </linearGradient>
+    <clipPath id="clip-暂无记录_资料用">
+      <rect width="184" height="100"/>
+    </clipPath>
+  </defs>
+  <g id="暂无记录_资料用" clip-path="url(#clip-暂无记录_资料用)">
+    <g id="Group_25829" data-name="Group 25829" transform="translate(-92.93 -256.848)">
+      <g id="Group_25828" data-name="Group 25828" transform="translate(-14 -14)" opacity="0.6">
+        <g id="Group_25826" data-name="Group 25826" transform="translate(162 271.848)">
+          <g id="Group_25825" data-name="Group 25825" clip-path="url(#clip-path)">
+            <path id="Path_25031" data-name="Path 25031" d="M72.831,101.02H6.252A6.251,6.251,0,0,1,0,94.768V13.777A6.252,6.252,0,0,1,6.252,7.525H72.831a6.252,6.252,0,0,1,6.252,6.252V94.768a6.251,6.251,0,0,1-6.252,6.252" transform="translate(0 -3.234)" fill="#e8e8e8"/>
+            <path id="Path_25032" data-name="Path 25032" d="M71.768,99.763H13.815a6.252,6.252,0,0,1-6.252-6.252V22.719a6.252,6.252,0,0,1,6.252-6.252H71.768a6.251,6.251,0,0,1,6.252,6.252V93.512a6.251,6.251,0,0,1-6.252,6.252" transform="translate(-3.25 -7.077)" fill="url(#linear-gradient)"/>
+            <path id="Path_25033" data-name="Path 25033" d="M75.319,17.192H21.759A2.788,2.788,0,0,1,18.971,14.4V2.787A2.788,2.788,0,0,1,21.759,0H75.319a2.788,2.788,0,0,1,2.788,2.787V14.4a2.788,2.788,0,0,1-2.788,2.788" transform="translate(-8.153)" fill="#eee"/>
+            <path id="Path_25034" data-name="Path 25034" d="M74.368,83.524H20.807a2.281,2.281,0,1,1,0-4.562H74.368a2.281,2.281,0,0,1,0,4.562" transform="translate(-7.962 -33.935)" fill="#e8e8e8"/>
+            <path id="Path_25035" data-name="Path 25035" d="M93.6,59.6H65.548a2.281,2.281,0,1,1,0-4.562H93.6a2.281,2.281,0,0,1,0,4.562" transform="translate(-27.19 -23.652)" fill="#e8e8e8"/>
+            <path id="Path_25036" data-name="Path 25036" d="M35.338,59.6H20.808a2.281,2.281,0,0,1,0-4.562h14.53a2.281,2.281,0,0,1,0,4.562" transform="translate(-7.962 -23.652)" fill="#e8e8e8"/>
+            <path id="Path_25037" data-name="Path 25037" d="M74.368,105.673H20.807a2.281,2.281,0,1,1,0-4.562H74.368a2.281,2.281,0,1,1,0,4.562" transform="translate(-7.962 -43.453)" fill="#e8e8e8"/>
+            <path id="Path_25038" data-name="Path 25038" d="M74.368,129.821H20.807a2.281,2.281,0,1,1,0-4.562H74.368a2.281,2.281,0,1,1,0,4.562" transform="translate(-7.962 -53.831)" fill="#e8e8e8"/>
+          </g>
+        </g>
+        <g id="Group_25827" data-name="Group 25827" transform="translate(0)">
+          <circle id="Ellipse_1025" data-name="Ellipse 1025" cx="3" cy="3" r="3" transform="translate(185 277)" fill="#dedede"/>
+          <circle id="Ellipse_1026" data-name="Ellipse 1026" cx="3" cy="3" r="3" transform="translate(199 277)" fill="#fff"/>
+          <circle id="Ellipse_1027" data-name="Ellipse 1027" cx="3" cy="3" r="3" transform="translate(212 277)" fill="#dedede"/>
+        </g>
+      </g>
+      <circle id="Ellipse_1028" data-name="Ellipse 1028" cx="10.5" cy="10.5" r="10.5" transform="matrix(0.454, 0.891, -0.891, 0.454, 111.641, 282.844)" opacity="0.44" fill="url(#linear-gradient-2)"/>
+      <circle id="Ellipse_1031" data-name="Ellipse 1031" cx="10.5" cy="10.5" r="10.5" transform="matrix(-0.588, -0.809, 0.809, -0.588, 246.729, 334.633)" opacity="0.44" fill="url(#linear-gradient-2)"/>
+      <circle id="Ellipse_1033" data-name="Ellipse 1033" cx="5.5" cy="5.5" r="5.5" transform="matrix(-0.588, -0.809, 0.809, -0.588, 115.836, 338.649)" opacity="0.44" fill="url(#linear-gradient-2)"/>
+      <circle id="Ellipse_1029" data-name="Ellipse 1029" cx="4.5" cy="4.5" r="4.5" transform="translate(134 311)" opacity="0.23" fill="url(#linear-gradient-5)"/>
+      <circle id="Ellipse_1030" data-name="Ellipse 1030" cx="4.5" cy="4.5" r="4.5" transform="translate(267 298)" opacity="0.23" fill="url(#linear-gradient-5)"/>
+      <circle id="Ellipse_1032" data-name="Ellipse 1032" cx="4.5" cy="4.5" r="4.5" transform="translate(240 284)" opacity="0.36" fill="url(#linear-gradient-5)"/>
+    </g>
+  </g>
+</svg>

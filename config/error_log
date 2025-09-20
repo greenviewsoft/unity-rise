@@ -1,0 +1,4 @@
+[15-Nov-2023 12:33:24 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home/tronwini/usdt-grab.vip/config/app.php:18
+Stack trace:
+#0 {main}
+  thrown in /home/tronwini/usdt-grab.vip/config/app.php on line 18

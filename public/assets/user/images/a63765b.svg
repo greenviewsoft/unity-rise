@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="80" height="80" viewBox="0 0 80 80">
+  <defs>
+    <clipPath id="clip-指南页_手机号绑定">
+      <rect width="80" height="80"/>
+    </clipPath>
+  </defs>
+  <g id="指南页_手机号绑定" clip-path="url(#clip-指南页_手机号绑定)">
+    <g id="Group_40845" data-name="Group 40845" transform="translate(-36 -309)">
+      <path id="Path_67434" data-name="Path 67434" d="M40,0A40,40,0,1,1,0,40,40,40,0,0,1,40,0Z" transform="translate(36 309)" fill="#c5c8d2"/>
+      <g id="Group_40817" data-name="Group 40817" transform="translate(189.217 -74.036)">
+        <rect id="Rectangle_63025" data-name="Rectangle 63025" width="22.434" height="46.037" transform="translate(-124.434 399.022)" fill="#c5c8d2"/>
+        <path id="Path_55716" data-name="Path 55716" d="M-103.247,397.545h-19.94a3.773,3.773,0,0,0-3.722,3.789v43.4a3.81,3.81,0,0,0,3.789,3.789h19.811a3.813,3.813,0,0,0,3.784-3.792v-43.4A3.773,3.773,0,0,0-103.247,397.545Zm-15.619,3.656a.667.667,0,0,1,.665-.665h9.97a.667.667,0,0,1,.664.665v.016a.665.665,0,0,1-.664.648h-9.97a.707.707,0,0,1-.113-.009.665.665,0,0,1-.552-.639Zm15.42,36.756h-19.542V404.923h19.542Z" fill="#fcfcfc"/>
+      </g>
+    </g>
+  </g>
+</svg>

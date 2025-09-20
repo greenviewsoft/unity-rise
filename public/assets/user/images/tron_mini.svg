@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
+  <defs>
+    <clipPath id="clip-path">
+      <rect id="Rectangle_63039" data-name="Rectangle 63039" width="24" height="24" transform="translate(-4342 -5409)" fill="#fff" stroke="#707070" stroke-width="1"/>
+    </clipPath>
+    <clipPath id="clip-主网_TRC20">
+      <rect width="24" height="24"/>
+    </clipPath>
+  </defs>
+  <g id="主网_TRC20" clip-path="url(#clip-主网_TRC20)">
+    <g id="Mask_Group_940" data-name="Mask Group 940" transform="translate(4342 5409)" clip-path="url(#clip-path)">
+      <g id="Group_40595" data-name="Group 40595" transform="translate(-4399.406 -5583.778)">
+        <path id="Path_52607" data-name="Path 52607" d="M60.185,175.778l15.248,3.63-6.389,6.9Z" fill="#232424"/>
+        <path id="Path_52608" data-name="Path 52608" d="M60.185,178.444l8.64,10.455-1.017,10.891Z" transform="translate(0 -2.013)" fill="#232424"/>
+        <path id="Path_52609" data-name="Path 52609" d="M104.778,191.333l-6.4,6.934,9.082-4.907Z" transform="translate(-28.836 -11.744)" fill="#232424"/>
+        <path id="Path_52610" data-name="Path 52610" d="M103.457,202.148l-9.366,4.865-1.017,10.673Z" transform="translate(-24.829 -19.908)" fill="#232424"/>
+      </g>
+    </g>
+  </g>
+</svg>
