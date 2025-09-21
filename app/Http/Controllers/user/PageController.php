@@ -408,69 +408,146 @@ class PageController extends Controller
         return view('user.vip', compact('vipf', 'level'));
     }
 
-    public function team()
-    {
-        $data['total'] = Referhis::where('user_id', Auth::user()->id)->count();
+   
 
-        $today = Carbon::today();
-        $data['todayUsers'] = Referhis::where('user_id', Auth::user()->id)
-            ->whereDate('created_at', $today)
-            ->count();
+public function team()
+{
+    $currentUser = Auth::user();
 
-        $totalusers = Referhis::where('user_id', Auth::user()->id)->get();
-        $totalDepositSum = 0;
-        $refcom = 0;
-        foreach ($totalusers as $totaluser) {
-            $deposites = Deposite::where('user_id', $totaluser->refer_id)->sum('amount');
+    // General team info
+    $data['total'] = Referhis::where('user_id', $currentUser->id)->count();
+    $today = Carbon::today();
+    $data['todayUsers'] = Referhis::where('user_id', $currentUser->id)
+        ->whereDate('created_at', $today)
+        ->count();
 
-            // Add the deposit sum for the current user to the total
-            $totalDepositSum += $deposites;
-            $refcom = History::where('user_id', $totaluser->user_id)
-                ->where('type', 'B-receive')
-                ->sum('amount');
-        }
-        $data['totaldeposite'] = $totalDepositSum;
-        $data['refcom'] = $refcom;
+    // Total deposit and B-receive for direct referrals
+    $totalusers = Referhis::where('user_id', $currentUser->id)->get();
+    $totalDepositSum = 0;
+    $refcomSum = 0;
+    foreach ($totalusers as $totaluser) {
+        $deposites = Deposite::where('user_id', $totaluser->refer_id)->sum('amount');
+        $totalDepositSum += $deposites;
 
-        $data['totalcommission'] = ReferralCommission::where('referrer_id', Auth::user()->id)->sum('commission_amount');
-        $data['total_deposite'] = Deposite::where('user_id', Auth::user()->id)->sum('amount');
-
-        $data['total_withdraw'] = Withdraw::where('user_id', Auth::user()->id)->sum('amount');
-
-        $data['allgrabs'] = History::where('user_id', Auth::user()->id)
-            ->where('type', 'grab')
-            ->sum('amount');
-        $data['refercom'] = History::where('user_id', Auth::user()->id)
+        $refcomSum += History::where('user_id', $totaluser->user_id)
             ->where('type', 'B-receive')
             ->sum('amount');
-
-        // Enhanced team members data with detailed information
-        $refersusers = User::where('parent_id', Auth::user()->id)
-            ->orderBy('id', 'desc')
-            ->get();
-        
-        // Add detailed information for each referred user
-        foreach ($refersusers as $user) {
-            // Calculate total deposit amount for this user
-            $user->total_deposit = Deposite::where('user_id', $user->id)->sum('amount');
-            
-            // Calculate total profit (commission + grab earnings)
-            $user->total_commission = ReferralCommission::where('referred_id', $user->id)->sum('commission_amount');
-            $user->total_grabs = History::where('user_id', $user->id)
-                ->where('type', 'grab')
-                ->sum('amount');
-            $user->total_profit = $user->total_commission + $user->total_grabs;
-            
-            // Calculate referral commission earned from this user
-            $user->earned_commission = ReferralCommission::where('referrer_id', Auth::user()->id)
-                ->where('referred_id', $user->id)
-                ->sum('commission_amount');
-        }
-        
-        $data['refersusers'] = $refersusers;
-
-        return view('user.team', $data);
     }
+    $data['totaldeposite'] = $totalDepositSum;
+    $data['refcom'] = $refcomSum;
+
+    $data['totalcommission'] = ReferralCommission::where('referrer_id', $currentUser->id)->sum('commission_amount');
+    $data['total_deposite'] = Deposite::where('user_id', $currentUser->id)->sum('amount');
+    $data['total_withdraw'] = Withdraw::where('user_id', $currentUser->id)->sum('amount');
+
+    $data['allgrabs'] = History::where('user_id', $currentUser->id)
+        ->where('type', 'grab')
+        ->sum('amount');
+    $data['refercom'] = History::where('user_id', $currentUser->id)
+        ->where('type', 'B-receive')
+        ->sum('amount');
+
+    // Multi-level downline users
+    $allDownlineUsers = $currentUser->getAllDownlineUsers();
+    $refersusers = collect();
+    foreach ($allDownlineUsers as $user) {
+        $level = $this->calculateUserLevel($currentUser, $user);
+
+        // Limit display for Rank 1 to 6 levels
+        if ($currentUser->rank == 1 && $level > 6) continue;
+
+        $user->level = $level;
+        $user->total_deposit = Deposite::where('user_id', $user->id)->sum('amount');
+        $user->total_commission = ReferralCommission::where('referred_id', $user->id)->sum('commission_amount');
+        $user->total_grabs = History::where('user_id', $user->id)->where('type', 'grab')->sum('amount');
+        $user->total_profit = $user->total_commission + $user->total_grabs;
+        $user->earned_commission = ReferralCommission::where('referrer_id', $currentUser->id)
+            ->where('referred_id', $user->id)
+            ->sum('commission_amount');
+
+        $refersusers->push($user);
+    }
+    $data['refersusers'] = $refersusers->sortBy(['level', 'id']);
+
+    // User rank and business
+    $data['user_rank'] = $currentUser->rank;
+    $data['user_business_volume'] = $currentUser->getTeamBusinessVolume();
+    $data['user_personal_investment'] = $currentUser->getPersonalInvestment();
+
+    // Rank requirements
+    $currentRankRequirements = $this->getRankRequirements($currentUser->rank);
+    $nextRankRequirements = $this->getRankRequirements($currentUser->rank + 1);
+
+    $data['current_rank_requirement'] = $currentRankRequirements;
+    $data['next_rank_requirement'] = $nextRankRequirements;
+
+    // Dynamic rank progress calculation
+    $currentTarget = $currentRankRequirements['business_volume'];
+    $nextTarget = $nextRankRequirements['business_volume'] ?? $currentTarget;
+
+    $completed = min($data['user_business_volume'], $currentTarget);
+    $remaining = max(0, $currentTarget - $data['user_business_volume']);
+    $progressPercent = $currentTarget > 0 ? round(($completed / $currentTarget) * 100, 2) : 0;
+
+    $data['business_completed'] = $completed;
+    $data['business_remaining'] = $remaining;
+    $data['progress_percent'] = $progressPercent;
+
+    return view('user.team', $data);
+}
+
+/**
+ * Calculate the level of a user in relation to the current user
+ */
+private function calculateUserLevel($currentUser, $targetUser)
+{
+    $level = 1;
+    $uplineUser = $targetUser->referrer;
+
+    while ($uplineUser && $uplineUser->id !== $currentUser->id && $level <= 10) {
+        $level++;
+        $uplineUser = $uplineUser->referrer;
+    }
+
+    return $uplineUser && $uplineUser->id === $currentUser->id ? $level : 0;
+}
+
+/**
+ * Get rank requirements for a specific rank
+ */
+private function getRankRequirements($rank)
+{
+    $rankRequirement = \App\Models\RankRequirement::where('rank', $rank)->first();
+
+    if ($rankRequirement) {
+        return [
+            'business_volume' => $rankRequirement->team_business_volume,
+            'name' => $rankRequirement->rank_name
+        ];
+    }
+
+    // Fallback values
+    $requirements = [
+        0 => ['business_volume' => 0, 'name' => 'Unranked'],
+        1 => ['business_volume' => 12000, 'name' => 'Rookie'],
+        2 => ['business_volume' => 25000, 'name' => 'Bronze'],
+        3 => ['business_volume' => 50000, 'name' => 'Silver'],
+        4 => ['business_volume' => 100000, 'name' => 'Gold'],
+        5 => ['business_volume' => 200000, 'name' => 'Diamond'],
+        6 => ['business_volume' => 350000, 'name' => 'Master'],
+        7 => ['business_volume' => 500000, 'name' => 'Grand Master'],
+        8 => ['business_volume' => 750000, 'name' => 'Champion'],
+        9 => ['business_volume' => 1000000, 'name' => 'Legend'],
+        10 => ['business_volume' => 1500000, 'name' => 'Mythic'],
+        11 => ['business_volume' => 2000000, 'name' => 'Immortal'],
+        12 => ['business_volume' => 3000000, 'name' => 'Divine']
+    ];
+
+    return $requirements[$rank] ?? ['business_volume' => 0, 'name' => 'Unknown'];
+}
+
+
+
 
     public function account()
     {

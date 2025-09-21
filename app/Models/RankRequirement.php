@@ -72,26 +72,11 @@ class RankRequirement extends Model
     }
 
     /**
-     * Get rank name
+     * Get rank name from database
      */
     public function getRankName()
     {
-        $rankNames = [
-            1 => 'Rookie',
-            2 => 'Bronze',
-            3 => 'Silver',
-            4 => 'Gold',
-            5 => 'Platinum',
-            6 => 'Diamond',
-            7 => 'Master',
-            8 => 'Grand Master',
-            9 => 'Champion',
-            10 => 'Legend',
-            11 => 'Mythic',
-            12 => 'Immortal'
-        ];
-
-        return $rankNames[$this->rank] ?? 'Unknown';
+        return $this->rank_name ?? 'Unknown';
     }
 
     /**

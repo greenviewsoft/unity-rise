@@ -99,31 +99,31 @@ class RankReward extends Model
     }
 
     /**
-     * Get rank reward amounts
+     * Get rank reward amounts from database
      */
     public static function getRankRewards()
     {
-        return [
-            2 => 100,   // Rank 2 reward
-            3 => 250,   // Rank 3 reward
-            4 => 500,   // Rank 4 reward
-            5 => 1000,  // Rank 5 reward
-            6 => 2000,  // Rank 6 reward
-            7 => 3500,  // Rank 7 reward
-            8 => 5000,  // Rank 8 reward
-            9 => 7500,  // Rank 9 reward
-            10 => 10000, // Rank 10 reward
-            11 => 15000, // Rank 11 reward
-            12 => 25000  // Rank 12 reward
-        ];
+        $requirements = \App\Models\RankRequirement::where('is_active', true)
+                                                   ->orderBy('rank')
+                                                   ->get();
+        
+        $rewards = [];
+        foreach ($requirements as $requirement) {
+            $rewards[$requirement->rank] = $requirement->reward_amount;
+        }
+        
+        return $rewards;
     }
 
     /**
-     * Get reward amount for specific rank
+     * Get reward amount for specific rank from database
      */
     public static function getRewardForRank($rank)
     {
-        $rewards = self::getRankRewards();
-        return $rewards[$rank] ?? 0;
+        $rankRequirement = \App\Models\RankRequirement::where('rank', $rank)
+                                                      ->where('is_active', true)
+                                                      ->first();
+        
+        return $rankRequirement ? $rankRequirement->reward_amount : 0;
     }
 }

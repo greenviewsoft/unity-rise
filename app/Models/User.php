@@ -422,22 +422,14 @@ class User extends Authenticatable
      */
     public function getRankName()
     {
-        $rankNames = [
-            1 => 'Bronze',
-            2 => 'Bronze+',
-            3 => 'Silver',
-            4 => 'Silver+',
-            5 => 'Gold',
-            6 => 'Gold+',
-            7 => 'Platinum',
-            8 => 'Platinum+',
-            9 => 'Diamond',
-            10 => 'Diamond+',
-            11 => 'Master',
-            12 => 'Grand Master'
-        ];
-
-        return $rankNames[$this->rank] ?? 'Bronze';
+        $rankRequirement = \App\Models\RankRequirement::where('rank', $this->rank)->first();
+        
+        if ($rankRequirement) {
+            return $rankRequirement->getRankName();
+        }
+        
+        // Fallback for unknown ranks
+        return 'Rookie';
     }
 
     /**

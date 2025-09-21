@@ -39,64 +39,119 @@
 
         <div class="content team-report-area">
 
+            <!-- Rank Progress Section -->
+            <div class="rank-progress-section mb-4">
+                <div class="card bg-dark text-white shadow-lg">
+                    <div class="card-body p-3">
+                        <h5 class="card-title text-white text-center mb-3">Rank Progress</h5>
+                         <div class="row g-2">
+                             <div class="col-6 col-md-3">
+                                 <div class="text-center p-2 bg-primary bg-opacity-10 rounded">
+                                     <h6 class="text-white mb-1 small">Current Rank</h6>
+                                     <span class="badge bg-primary px-2 py-1">{{ $current_rank_requirement['name'] ?? 'Rank ' . $user_rank }}</span>
+                                 </div>
+                             </div>
+                             <div class="col-6 col-md-3">
+                                 <div class="text-center p-2 bg-success bg-opacity-10 rounded">
+                                     <h6 class="text-white mb-1 small">Total Business</h6>
+                                     <span class="text-success fw-bold small">{{ number_format($user_business_volume, 2) }} USDT</span>
+                                 </div>
+                             </div>
+                             <div class="col-6 col-md-3">
+                                 <div class="text-center p-2 bg-info bg-opacity-10 rounded">
+                                     <h6 class="text-white mb-1 small">Completed</h6>
+                                     <span class="text-info fw-bold small">{{ number_format($business_completed, 2) }} USDT</span>
+                                 </div>
+                             </div>
+                             <div class="col-6 col-md-3">
+                                 <div class="text-center p-2 bg-warning bg-opacity-10 rounded">
+                                     <h6 class="text-white mb-1 small">Remaining</h6>
+                                     <span class="text-warning fw-bold small">{{ number_format($business_remaining, 2) }} USDT</span>
+                                 </div>
+                             </div>
+                         </div>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-white-50">Progress to Next Rank ({{ $next_rank_requirement['name'] ?? 'Next Level' }})</small>
+                                <small class="text-white fw-bold">
+                                    @if($business_remaining > 0)
+                                        {{ number_format($business_remaining, 2) }} USDT remaining
+                                    @else
+                                        Rank achieved! Next: {{ number_format($next_rank_requirement['business_volume'], 2) }} USDT
+                                    @endif
+                                </small>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-gradient bg-success" role="progressbar" 
+                                     style="width: {{ $next_rank_requirement['business_volume'] > 0 ? min(100, ($business_completed / $next_rank_requirement['business_volume']) * 100) : 0 }}%"
+                                     aria-valuenow="{{ $business_completed }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ $next_rank_requirement['business_volume'] }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="team_details_area">
                 <div class="team_deposit_content">
+                    <div class="card bg-dark text-white mb-3">
+                        <div class="card-body p-3">
                             <form action="">
-                                <div class="row">
-
-                                    <div class="col-6">
-                                        <input type="date" class="form-control" name="from" placeholder="to">
+                                <div class="row g-2">
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small text-white-50">From Date</label>
+                                        <input type="date" class="form-control form-control-sm" name="from">
                                     </div>
-                                    <div class="col-6">
-                                        <input type="date" class="form-control" name="to" placeholder="to">
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small text-white-50">To Date</label>
+                                        <input type="date" class="form-control form-control-sm" name="to">
                                     </div>
-                                    <div class="col-12">
-                                        <div class="search_bar">
-                                            <nav class="">
-                                                <div class="">
-                                                    <form>
-                                                        <input class="form-control me-2" type="search"
-                                                            placeholder="Search" aria-label="Search" name="key">
-                                                        <button class="btn btn-outline-success" type="submit"><i
-                                                                class="bi bi-search"></i></button>
-                                                    </form>
-                                                </div>
-                                            </nav>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small text-white-50">Search</label>
+                                        <div class="input-group input-group-sm">
+                                            <input class="form-control" type="search"
+                                                placeholder="Search by email or username" aria-label="Search" name="key">
+                                            <button class="btn btn-outline-success" type="submit">
+                                                <i class="bi bi-search"></i>
+                                            </button>
                                         </div>
                                     </div>
-
-
                                 </div>
                             </form>
+                        </div>
+                    </div>
                             <div class="team_report_area_data">
-                                <div class="">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="thead-dark">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover table-dark">
+                                        <thead class="table-dark">
                                             <tr>
-                                               
+                                                <th scope="col" class="text-center">Level</th>
                                                 <th scope="col">Email</th>
                                                 <th scope="col">Account</th>
-                                                <th scope="col">Deposit</th>
-                                                <th scope="col">Profit</th>
-                                                <th scope="col">Status</th>
+                                                <th scope="col" class="text-end">Deposit</th>
+                                                <th scope="col" class="text-end">Profit</th>
+                                                <th scope="col" class="text-center">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach ($refersusers as $refersuser)
                                                 <tr>
-                                                    
-                                                    <td style="color: white;">{{ $refersuser->email }}</td>
-                                                    <td style="color: white;">{{ $refersuser->username }}</td>
-                                                    <td style="color: white;">{{ number_format($refersuser->total_deposit, 2) }} USDT</td>
-                                                    <td style="color: white;">{{ number_format($refersuser->total_profit, 2) }} USDT</td>
-                                                  
-                                                    <td>
-                                        @if ($refersuser->total_deposit > 100)
-                                            <span class="badge bg-success">Active</span>
-                                        @else
-                                            <span class="badge bg-danger">INACTIVE</span>
-                                        @endif
-                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-info px-2 py-1">L{{ $refersuser->level ?? 1 }}</span>
+                                                    </td>
+                                                    <td class="text-white small">{{ $refersuser->email }}</td>
+                                                    <td class="text-white small">{{ $refersuser->username }}</td>
+                                                    <td class="text-end text-white small">{{ number_format($refersuser->total_deposit, 2) }} <span class="text-muted">USDT</span></td>
+                                                    <td class="text-end text-white small">{{ number_format($refersuser->total_profit, 2) }} <span class="text-muted">USDT</span></td>
+                                                    <td class="text-center">
+                                                        @if ($refersuser->total_deposit > 100)
+                                                            <span class="badge bg-success px-2 py-1">Active</span>
+                                                        @else
+                                                            <span class="badge bg-danger px-2 py-1">INACTIVE</span>
+                                                        @endif
+                                                    </td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
