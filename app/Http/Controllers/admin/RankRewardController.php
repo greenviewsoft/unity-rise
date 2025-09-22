@@ -300,49 +300,8 @@ class RankRewardController extends Controller
     }
 
     /**
-     * Approve rank reward
+     * Manual approval/rejection methods removed
+     * All rank rewards are now automatically approved and processed
+     * via the RankReward model's boot method
      */
-    public function approve($id)
-    {
-        $rankReward = RankReward::findOrFail($id);
-        
-        if ($rankReward->status !== 'pending') {
-            return redirect()->back()
-                           ->with('error', 'Only pending rewards can be approved!');
-        }
-
-        $rankReward->update([
-            'status' => 'approved',
-            'processed_at' => now()
-        ]);
-
-        // Update user rank and balance
-        $user = User::find($rankReward->user_id);
-        $user->update(['rank' => $rankReward->new_rank]);
-        $user->increment('balance', $rankReward->reward_amount);
-
-        return redirect()->back()
-                        ->with('success', 'Rank reward approved successfully!');
-    }
-
-    /**
-     * Reject rank reward
-     */
-    public function reject($id)
-    {
-        $rankReward = RankReward::findOrFail($id);
-        
-        if ($rankReward->status !== 'pending') {
-            return redirect()->back()
-                           ->with('error', 'Only pending rewards can be rejected!');
-        }
-
-        $rankReward->update([
-            'status' => 'rejected',
-            'processed_at' => now()
-        ]);
-
-        return redirect()->back()
-                        ->with('success', 'Rank reward rejected successfully!');
-    }
 }

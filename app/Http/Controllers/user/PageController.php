@@ -12,6 +12,7 @@ use App\Models\Energy;
 use App\Models\Event;
 use App\Models\Grab;
 use App\Models\History;
+use App\Models\Investment;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ReferralCommission;
@@ -447,27 +448,97 @@ public function team()
         ->where('type', 'B-receive')
         ->sum('amount');
 
-    // Multi-level downline users
-    $allDownlineUsers = $currentUser->getAllDownlineUsers();
-    $refersusers = collect();
-    foreach ($allDownlineUsers as $user) {
-        $level = $this->calculateUserLevel($currentUser, $user);
+    // OPTIMIZED STATISTICS - Direct Members and Business
+    $directReferrals = User::where('refer_id', $currentUser->id)->get();
+    $data['direct_member_count'] = $directReferrals->count();
+    
+    // Get direct business total with single query
+    $directUserIds = $directReferrals->pluck('id')->toArray();
+    $data['direct_business_total'] = empty($directUserIds) ? 0 : 
+        Investment::whereIn('user_id', $directUserIds)->where('status', 'active')->sum('amount');
+    
+    // Active and Inactive Direct Members
+    $data['direct_active_members'] = $directReferrals->where('status', 1)->count();
+    $data['direct_inactive_members'] = $directReferrals->where('status', 0)->count();
 
-        // Limit display for Rank 1 to 6 levels
-        if ($currentUser->rank == 1 && $level > 6) continue;
-
-        $user->level = $level;
-        $user->total_deposit = Deposite::where('user_id', $user->id)->sum('amount');
-        $user->total_commission = ReferralCommission::where('referred_id', $user->id)->sum('commission_amount');
-        $user->total_grabs = History::where('user_id', $user->id)->where('type', 'grab')->sum('amount');
-        $user->total_profit = $user->total_commission + $user->total_grabs;
-        $user->earned_commission = ReferralCommission::where('referrer_id', $currentUser->id)
-            ->where('referred_id', $user->id)
-            ->sum('commission_amount');
-
-        $refersusers->push($user);
+    // Total Team Members (All Downline Levels) - Optimized
+    $allDownlineUserIds = $currentUser->getDownlineUserIds();
+    $data['total_team_members'] = count($allDownlineUserIds);
+    
+    if (!empty($allDownlineUserIds)) {
+        $teamMemberStats = User::whereIn('id', $allDownlineUserIds)
+                              ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active')
+                              ->first();
+        $data['total_active_team_members'] = $teamMemberStats->active ?? 0;
+        $data['total_inactive_team_members'] = ($teamMemberStats->total ?? 0) - ($teamMemberStats->active ?? 0);
+    } else {
+        $data['total_active_team_members'] = 0;
+        $data['total_inactive_team_members'] = 0;
     }
-    $data['refersusers'] = $refersusers->sortBy(['level', 'id']);
+    
+    // Total Downline Business (All Levels) - Use optimized method
+    $data['total_downline_business'] = $currentUser->getTeamBusinessVolume();
+    
+    // Total Referral Income (All Commission Types)
+    $data['total_referral_income'] = ReferralCommission::where('referrer_id', $currentUser->id)->sum('commission_amount') + 
+                                   History::where('user_id', $currentUser->id)->where('type', 'B-receive')->sum('amount') +
+                                   History::where('user_id', $currentUser->id)->where('type', 'Refer commmission')->sum('amount');
+
+    // Multi-level downline users - OPTIMIZED
+    $allDownlineUserIds = $currentUser->getDownlineUserIds();
+    
+    if (!empty($allDownlineUserIds)) {
+        // Get all users with their data in fewer queries
+        $allDownlineUsers = User::whereIn('id', $allDownlineUserIds)->get();
+        
+        // Get all investments for downline users in one query
+        $investments = Investment::whereIn('user_id', $allDownlineUserIds)
+                                ->where('status', 'active')
+                                ->selectRaw('user_id, SUM(amount) as total_amount')
+                                ->groupBy('user_id')
+                                ->pluck('total_amount', 'user_id');
+        
+        // Get all commissions for downline users in one query
+        $commissions = ReferralCommission::whereIn('referred_id', $allDownlineUserIds)
+                                        ->selectRaw('referred_id, SUM(commission_amount) as total_commission')
+                                        ->groupBy('referred_id')
+                                        ->pluck('total_commission', 'referred_id');
+        
+        // Get all grabs for downline users in one query
+        $grabs = History::whereIn('user_id', $allDownlineUserIds)
+                       ->where('type', 'grab')
+                       ->selectRaw('user_id, SUM(amount) as total_grabs')
+                       ->groupBy('user_id')
+                       ->pluck('total_grabs', 'user_id');
+        
+        // Get earned commissions for current user in one query
+        $earnedCommissions = ReferralCommission::where('referrer_id', $currentUser->id)
+                                              ->whereIn('referred_id', $allDownlineUserIds)
+                                              ->selectRaw('referred_id, SUM(commission_amount) as earned_commission')
+                                              ->groupBy('referred_id')
+                                              ->pluck('earned_commission', 'referred_id');
+        
+        $refersusers = collect();
+        foreach ($allDownlineUsers as $user) {
+            $level = $this->calculateUserLevel($currentUser, $user);
+
+            // Limit display for Rank 1 to 6 levels
+            if ($currentUser->rank == 1 && $level > 6) continue;
+
+            $user->level = $level;
+            $user->total_deposit = $investments[$user->id] ?? 0;
+            $user->total_commission = $commissions[$user->id] ?? 0;
+            $user->total_grabs = $grabs[$user->id] ?? 0;
+            $user->total_profit = $user->total_commission + $user->total_grabs;
+            $user->earned_commission = $earnedCommissions[$user->id] ?? 0;
+
+            // Show all downline users regardless of deposit amount
+            $refersusers->push($user);
+        }
+        $data['refersusers'] = $refersusers->sortBy(['level', 'id']);
+    } else {
+        $data['refersusers'] = collect();
+    }
 
     // User rank and business
     $data['user_rank'] = $currentUser->rank;

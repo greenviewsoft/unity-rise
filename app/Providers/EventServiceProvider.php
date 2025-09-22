@@ -8,6 +8,7 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use Illuminate\Support\Facades\Event;
 use App\Events\InvestmentCreated;
 use App\Listeners\InvestmentRankUpgradeListener;
+use App\Listeners\ClearTeamBusinessVolumeCache;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -22,6 +23,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         InvestmentCreated::class => [
             InvestmentRankUpgradeListener::class,
+            ClearTeamBusinessVolumeCache::class,
         ],
     ];
 

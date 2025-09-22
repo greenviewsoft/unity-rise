@@ -107,20 +107,24 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     // Commission Management Routes
     Route::resource('investment-plans', 'InvestmentPlanController');
     Route::resource('rank-rewards', 'RankRewardController');
-    
-  
-// rank 
-
     Route::resource('commission', 'CommissionController');
+    
+    // Rank Commission Routes
     Route::get('rankcommission', 'RankCommissionController@index')->name('rankcommission.index');
-                Route::get('rankcommission/{id}/edit', 'RankCommissionController@edit')->name('rankcommission.edit');
-                Route::put('rankcommission/{id}', 'RankCommissionController@update')->name('rankcommission.update');
+    Route::get('rankcommission/{id}/edit', 'RankCommissionController@edit')->name('rankcommission.edit');
+    Route::put('rankcommission/{id}', 'RankCommissionController@update')->name('rankcommission.update');
 
     
     // Investment Plan Management Routes
     Route::get('investment-plans/settings', 'InvestmentPlanController@settings')->name('investment-plans.settings');
     Route::post('investment-plans/activate/{id}', 'InvestmentPlanController@activate')->name('investment-plans.activate');
     Route::post('investment-plans/deactivate/{id}', 'InvestmentPlanController@deactivate')->name('investment-plans.deactivate');
+    
+    // Active Investment Management Routes
+    Route::get('active-investments', 'AdminInvestmentController@index')->name('active-investments.index');
+    Route::get('active-investments/{id}', 'AdminInvestmentController@show')->name('active-investments.show');
+    Route::get('active-investments/{id}/complete', 'AdminInvestmentController@complete')->name('active-investments.complete');
+    Route::get('active-investments/{id}/cancel', 'AdminInvestmentController@cancel')->name('active-investments.cancel');
     
     // Delete routes for commission management
     Route::get('investment-plans/delete/{id}', 'InvestmentPlanController@delete');
@@ -184,6 +188,9 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('investment/history', 'InvestmentController@history')->name('investment.history');
     Route::get('investment/active', 'InvestmentController@active')->name('investment.active');
     Route::post('investment/distribute-profit', 'InvestmentController@distributeDailyProfit')->name('investment.distribute');
+    
+    // Rank requirements page
+    Route::get('rank/requirements', 'DashboardController@rankRequirements')->name('rank.requirements');
 });
 
 // cache clear

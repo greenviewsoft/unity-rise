@@ -722,7 +722,7 @@
             <i class="fas fa-chart-line fa-3x mb-3"></i>
             <h5 class="text-white mb-3">No Active Investments</h5>
             <p class="text-white-50 mb-4">You don't have any active investments at the moment. Start investing to see your portfolio here.</p>
-            <a href="{{ route('user.investment.plans') }}" class="btn btn-modern">
+            <a href="{{ route('user.investment.index') }}" class="btn btn-modern">
                 <i class="fas fa-plus me-2"></i>
                 Start Investing
             </a>

@@ -21,6 +21,24 @@ class Investment extends Model
         static::created(function ($investment) {
             event(new InvestmentCreated($investment));
         });
+        
+        static::updated(function ($investment) {
+            // Clear cache when investment status or amount changes
+            if ($investment->isDirty(['status', 'amount'])) {
+                $user = $investment->user;
+                if ($user) {
+                    $user->clearTeamBusinessVolumeCache();
+                }
+            }
+        });
+        
+        static::deleted(function ($investment) {
+            // Clear cache when investment is deleted
+            $user = $investment->user;
+            if ($user) {
+                $user->clearTeamBusinessVolumeCache();
+            }
+        });
     }
 
     protected $fillable = [

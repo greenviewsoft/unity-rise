@@ -132,20 +132,46 @@ class User extends Authenticatable
     }
 
     /**
-     * Get team business volume (total investment of all downline users)
+     * Get team business volume (total active investment of all downline users) - Optimized with Caching
      */
     public function getTeamBusinessVolume()
     {
-        $totalBV = 0;
+        // Cache key for team business volume
+        $cacheKey = "team_bv_{$this->id}";
         
-        // Get all downline users recursively
-        $downlineUsers = $this->getAllDownlineUsers();
+        // Try to get from cache first (cache for 5 minutes)
+        return \Cache::remember($cacheKey, 300, function () {
+            // Get all downline user IDs efficiently
+            $downlineIds = $this->getDownlineUserIds();
+            
+            if (empty($downlineIds)) {
+                return 0;
+            }
+            
+            // Single query to get total active investments for all downline users
+            return \App\Models\Investment::whereIn('user_id', $downlineIds)
+                                        ->where('status', 'active')
+                                        ->sum('amount');
+        });
+    }
+    
+    /**
+     * Clear team business volume cache
+     */
+    public function clearTeamBusinessVolumeCache()
+    {
+        $cacheKey = "team_bv_{$this->id}";
+        \Cache::forget($cacheKey);
         
-        foreach ($downlineUsers as $user) {
-            $totalBV += $user->investments()->sum('amount');
+        // Also clear cache for upline users since their team volume changed
+        $uplineUser = $this->referrer;
+        $level = 0;
+        while ($uplineUser && $level < 20) {
+            $uplineCacheKey = "team_bv_{$uplineUser->id}";
+            \Cache::forget($uplineCacheKey);
+            $uplineUser = $uplineUser->referrer;
+            $level++;
         }
-        
-        return $totalBV;
     }
 
     /**
@@ -178,27 +204,85 @@ class User extends Authenticatable
     }
 
     /**
-     * Get personal investment amount
+     * Get personal investment amount (only active investments)
      */
     public function getPersonalInvestment()
     {
-        return $this->investments()->sum('amount');
+        return $this->investments()->where('status', 'active')->sum('amount');
     }
 
     /**
-     * Get all downline users recursively
+     * Get all downline users recursively (optimized with single query)
      */
     public function getAllDownlineUsers()
     {
-        $downlineUsers = collect();
-        $directReferrals = $this->referrals;
+        // Use a more efficient approach with a single recursive query
+        $downlineIds = $this->getDownlineUserIds();
         
-        foreach ($directReferrals as $referral) {
-            $downlineUsers->push($referral);
-            $downlineUsers = $downlineUsers->merge($referral->getAllDownlineUsers());
+        if (empty($downlineIds)) {
+            return collect();
         }
         
-        return $downlineUsers;
+        return User::whereIn('id', $downlineIds)->get();
+    }
+    
+    /**
+     * Get all downline user IDs using recursive CTE (Common Table Expression)
+     */
+    public function getDownlineUserIds()
+    {
+        // Use raw SQL with recursive CTE for better performance
+        $sql = "
+            WITH RECURSIVE downline_tree AS (
+                -- Base case: direct referrals
+                SELECT id, refer_id, 1 as level
+                FROM users 
+                WHERE refer_id = ?
+                
+                UNION ALL
+                
+                -- Recursive case: get referrals of referrals
+                SELECT u.id, u.refer_id, dt.level + 1
+                FROM users u
+                INNER JOIN downline_tree dt ON u.refer_id = dt.id
+                WHERE dt.level < 20  -- Prevent infinite recursion
+            )
+            SELECT id FROM downline_tree
+        ";
+        
+        try {
+            $results = \DB::select($sql, [$this->id]);
+            return array_column($results, 'id');
+        } catch (\Exception $e) {
+            // Fallback to the old method if CTE is not supported
+            return $this->getDownlineUserIdsLegacy();
+        }
+    }
+    
+    /**
+     * Legacy method for databases that don't support CTE
+     */
+    private function getDownlineUserIdsLegacy()
+    {
+        $downlineIds = [];
+        $currentLevelIds = [$this->id];
+        $level = 0;
+        
+        while (!empty($currentLevelIds) && $level < 20) {
+            $nextLevelIds = User::whereIn('refer_id', $currentLevelIds)
+                                ->pluck('id')
+                                ->toArray();
+            
+            if (empty($nextLevelIds)) {
+                break;
+            }
+            
+            $downlineIds = array_merge($downlineIds, $nextLevelIds);
+            $currentLevelIds = $nextLevelIds;
+            $level++;
+        }
+        
+        return $downlineIds;
     }
 
     /**
@@ -275,19 +359,17 @@ class User extends Authenticatable
             $oldRank = $this->rank ?? 0;
             $previousBalance = $this->balance;
             
-            // Create rank reward record
+            // Create rank reward record (auto-approved)
             $rankReward = RankReward::create([
                 'user_id' => $this->id,
                 'old_rank' => $oldRank,
                 'new_rank' => $rank,
                 'reward_amount' => $requirement->reward_amount,
-                'reward_type' => 'rank_achievement',
-                'status' => 'processed',
-                'processed_at' => now()
+                'reward_type' => 'rank_achievement'
+                // status and processed_at will be set automatically in boot method
             ]);
             
-            // Update user balance
-            $this->increment('balance', $requirement->reward_amount);
+            // Balance update is handled automatically in RankReward boot method
             $newBalance = $this->fresh()->balance;
             
             // Create history record
@@ -440,6 +522,10 @@ class User extends Authenticatable
         return $this->hasMany(TransactionLog::class);
     }
 
+public function directReferrals()
+{
+    return $this->hasMany(User::class, 'refer_id', 'id');
+}
     /**
      * Create a transaction log entry
      */

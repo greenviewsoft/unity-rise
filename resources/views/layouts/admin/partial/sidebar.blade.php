@@ -25,6 +25,12 @@
             Investment Plans
         </a>
 
+        <!-- Active Investment -->
+        <a class="nav-link {{ Request::is('admin/active-investments*') ? 'active' : '' }}" href="{{url('admin/active-investments')}}">
+            <div class="sb-nav-link-icon"><i class="fas fa-coins"></i></div>
+            Active Investment
+        </a>
+
 
  <!-- Rank Commission -->
         <a class="nav-link {{ Request::is('admin/rankcommission*') ? 'active' : '' }}" href="{{url('admin/rankcommission')}}">

@@ -26,6 +26,12 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <!-- Auto-Approval System Notice -->
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Automatic System:</strong> All rank rewards are now automatically approved and processed. Manual approval is no longer required.
+                    </div>
+
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             {{ session('success') }}
@@ -162,20 +168,7 @@
                                                    class="btn btn-info btn-sm" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{{ route('admin.rank-rewards.edit', $reward->id) }}" 
-                                                   class="btn btn-warning btn-sm" title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                @if($reward->status === 'pending')
-                                                    <button type="button" class="btn btn-success btn-sm" title="Approve"
-                                                            onclick="approveReward({{ $reward->id }})">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-danger btn-sm" title="Reject"
-                                                            onclick="rejectReward({{ $reward->id }})">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                @endif
+                                                <!-- Manual approval/rejection removed - System is now fully automatic -->
                                                 <form action="{{ route('admin.rank-rewards.destroy', $reward->id) }}" 
                                                       method="POST" style="display: inline-block;">
                                                     @csrf

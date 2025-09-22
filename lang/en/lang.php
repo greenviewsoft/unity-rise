@@ -37,7 +37,7 @@ return [
     'hello'=> 'Hello',
     'total_assets'=> 'My total assets',
     'today_profit'=> "Today's Profits",
-    'promo_bonus'=> 'Promotion Bonus',
+    'promo_bonus'=> 'Referral Income',
     'acc_profit'=> 'Leader Rewards',
 
     'deposit'=> 'Deposit',

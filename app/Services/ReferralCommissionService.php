@@ -61,15 +61,18 @@ class ReferralCommissionService
                     'commission_date' => now()
                 ]);
                 
-                // Capture previous balance for logging
-                $previousBalance = $referrer->refer_commission;
+                // Capture previous balances for logging
+                $previousBalance = $referrer->balance;
+                $previousReferCommission = $referrer->refer_commission;
                 
-                // Add commission to referrer's balance
+                // Add commission to both refer_commission and main balance
                 $referrer->increment('refer_commission', $commissionAmount);
+                $referrer->increment('balance', $commissionAmount);
                 
-                // Get new balance for logging
+                // Get new balances for logging
                 $referrer->refresh();
-                $newBalance = $referrer->refer_commission;
+                $newBalance = $referrer->balance;
+                $newReferCommission = $referrer->refer_commission;
                 
                 // Create transaction log
                 $referrer->createTransactionLog([
@@ -83,7 +86,9 @@ class ReferralCommissionService
                         'investment_amount' => $investmentAmount,
                         'commission_level' => $level,
                         'commission_rate' => $commissionRate,
-                        'referrer_rank' => $referrer->rank
+                        'referrer_rank' => $referrer->rank,
+                        'previous_refer_commission' => $previousReferCommission,
+                        'new_refer_commission' => $newReferCommission
                     ]
                 ]);
                 
@@ -113,44 +118,17 @@ class ReferralCommissionService
             $rewardAmount = RankReward::getRewardForRank($newRank);
             
             if ($rewardAmount > 0) {
-                // Create rank reward record
+                // Create rank reward record (auto-approved and processed)
                 $rankReward = RankReward::create([
                     'user_id' => $user->id,
                     'old_rank' => $oldRank,
                     'new_rank' => $newRank,
                     'reward_amount' => $rewardAmount,
-                    'reward_type' => 'rank_achievement',
-                    'status' => 'pending'
+                    'reward_type' => 'rank_achievement'
+                    // status, processed_at, balance update, and logging handled automatically in boot method
                 ]);
                 
-                // Capture previous balance for logging
-                $previousBalance = $user->balance;
-                
-                // Add reward to user balance
-                $user->increment('balance', $rewardAmount);
-                
-                // Get new balance for logging
-                $user->refresh();
-                $newBalance = $user->balance;
-                
-                // Create transaction log
-                $user->createTransactionLog([
-                    'type' => 'rank_reward',
-                    'amount' => $rewardAmount,
-                    'previous_balance' => $previousBalance,
-                    'new_balance' => $newBalance,
-                    'metadata' => [
-                        'old_rank' => $oldRank,
-                        'new_rank' => $newRank,
-                        'reward_type' => 'rank_achievement',
-                        'rank_reward_id' => $rankReward->id
-                    ]
-                ]);
-                
-                // Mark reward as processed
-                $rankReward->markAsProcessed();
-                
-                Log::info("Rank reward processed for user {$user->id}: {$rewardAmount} for achieving rank {$newRank}");
+                Log::info("Rank reward auto-processed for user {$user->id}: {$rewardAmount} for achieving rank {$newRank}");
             }
             
             DB::commit();

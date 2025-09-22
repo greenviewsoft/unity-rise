@@ -201,19 +201,17 @@ class RankUpgradeService
                 if ($requirement && $requirement->reward_amount > 0) {
                     $previousBalance = $user->balance;
                     
-                    // Create rank reward record
+                    // Create rank reward record (auto-approved)
                     $rankReward = \App\Models\RankReward::create([
                         'user_id' => $user->id,
                         'old_rank' => $rank - 1,
                         'new_rank' => $rank,
                         'reward_amount' => $requirement->reward_amount,
-                        'reward_type' => 'special',
-                        'status' => 'processed',
-                        'processed_at' => now()
+                        'reward_type' => 'special'
+                        // status, processed_at, and balance update handled automatically in boot method
                     ]);
                     
-                    // Update user balance
-                    $user->increment('balance', $requirement->reward_amount);
+                    // Get updated balance after auto-processing
                     $newBalance = $user->fresh()->balance;
                     
                     // Create history record

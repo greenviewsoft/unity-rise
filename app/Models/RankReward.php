@@ -26,15 +26,48 @@ class RankReward extends Model
     ];
 
     /**
-     * Boot method to set default values
+     * Boot method to set default values and auto-approve
      */
     protected static function boot()
     {
         parent::boot();
         
         static::creating(function ($model) {
-            if (!$model->status) {
-                $model->status = 'pending';
+            // Auto-approve all rank rewards
+            $model->status = 'approved';
+            $model->processed_at = now();
+        });
+        
+        static::created(function ($rankReward) {
+            // Process the reward after creation
+            $user = \App\Models\User::find($rankReward->user_id);
+            
+            if ($user && $rankReward->reward_amount > 0) {
+                $previousBalance = $user->balance;
+                
+                // Update user rank and balance
+                $user->update(['rank' => $rankReward->new_rank]);
+                $user->increment('balance', $rankReward->reward_amount);
+                
+                $newBalance = $user->fresh()->balance;
+                
+                // Create transaction log
+                \App\Models\Log::createTransactionLog(
+                    $user->id,
+                    'rank_reward_auto',
+                    $rankReward->reward_amount,
+                    $previousBalance,
+                    $newBalance,
+                    'App\\Models\\RankReward',
+                    $rankReward->id,
+                    "Auto-approved rank reward - Rank {$rankReward->old_rank} to {$rankReward->new_rank}",
+                    [
+                        'old_rank' => $rankReward->old_rank,
+                        'new_rank' => $rankReward->new_rank,
+                        'reward_type' => $rankReward->reward_type,
+                        'auto_processed' => true
+                    ]
+                );
             }
         });
     }

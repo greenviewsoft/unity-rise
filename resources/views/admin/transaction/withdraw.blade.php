@@ -84,6 +84,7 @@
                                 <tr>
                                     <th>Phone | Username</th>
                                     <th>ID</th>
+                                    <th>Withdraw Account</th>
                                     <th>Type</th>
                                     <th>Amount</th>
                                     <th>Trid</th>
@@ -99,7 +100,7 @@
                                         @endphp
                                         <td>{{ $user->phone }} | {{ $user->username }}</td>
                                         <td>#{{ $withdraw->id }}</td>
-
+                                        <td>{{ $withdraw->txaddress }}</td>
                                         <td>{{ $withdraw->type }}</td>
                                         <td>USDT {{ $withdraw->amount }}</td>
                                         <td>{{ $withdraw->txid }}</td>

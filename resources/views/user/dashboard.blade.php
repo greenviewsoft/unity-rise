@@ -48,6 +48,314 @@ body {
 .card-style {
     background: rgba(26,26,46,0.8);
     backdrop-filter: blur(20px);
+}
+
+/* ===== Ranking Progress Styles ===== */
+.ranking-progress-section {
+    background: linear-gradient(135deg, rgba(26,26,46,0.95), rgba(30,30,60,0.95));
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(99,102,241,0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(99,102,241,0.15);
+}
+
+.rank-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.rank-title {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 16px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rank-title::before {
+    content: "🎯";
+    font-size: 18px;
+}
+
+.bonus-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.bonus-amount {
+    color: #10b981;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(16,185,129,0.3);
+}
+
+.bonus-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(16,185,129,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+}
+
+.progress-item {
+    margin-bottom: 18px;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.progress-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.progress-label::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.progress-value {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+    position: relative;
+}
+
+.progress-fill::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-percent {
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 45px;
+    text-align: right;
+    background: rgba(99,102,241,0.1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(99,102,241,0.2);
+}
+
+.remaining-amount {
+    color: #f59e0b;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+    background: rgba(245,158,11,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.unlock-status {
+    padding: 12px 16px;
+    border-radius: 12px;
+    text-align: center;
+    margin-top: 8px;
+}
+
+.unlock-ready {
+    background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.25));
+    border: 1px solid rgba(16,185,129,0.4);
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(16,185,129,0.2);
+    animation: pulse-green 2s infinite;
+}
+
+.unlock-pending {
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.25));
+    border: 1px solid rgba(245,158,11,0.4);
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.2);
+}
+
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 4px 16px rgba(16,185,129,0.2); }
+    50% { box-shadow: 0 6px 20px rgba(16,185,129,0.4); }
+}
+
+.max-rank-achieved {
+    background: linear-gradient(135deg, rgba(26,26,46,0.95), rgba(30,30,60,0.95));
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(251,191,36,0.4);
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(251,191,36,0.15);
+    margin-top: 16px;
+}
+
+.max-rank-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fbbf24;
+    font-size: 16px;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(251,191,36,0.3);
+    animation: glow-gold 3s ease-in-out infinite;
+}
+
+@keyframes glow-gold {
+    0%, 100% { text-shadow: 0 2px 4px rgba(251,191,36,0.3); }
+    50% { text-shadow: 0 4px 8px rgba(251,191,36,0.6); }
+}
+
+.max-rank-badge i {
+    font-size: 18px;
+}
+
+/* Simple Rank Section */
+.simple-rank-section {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.rank-unlock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.rank-unlock-btn:hover {
+    background: linear-gradient(135deg, #2980b9, #3498db);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    color: #fff;
+    text-decoration: none;
+}
+
+.max-rank-section {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.max-rank-section .max-rank-badge {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: #fff;
+    padding: 15px 25px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Rank Badge Styles */
+.rank-display {
+    margin-top: 8px;
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--gradient-primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rank-icon {
+    font-size: 12px;
+}
+
+.rank-text {
+    line-height: 1;
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 16px;
     padding: 20px;
@@ -201,7 +509,8 @@ body {
                   <img src="{{ asset('public/assets/user/images/') }}/logo.png" alt="logo">
                </div>
             </div>
-            <div class="top_battet align-self-center ps-1"> 
+            
+<div class="top_battet align-self-center ps-1"> 
     <h5 class="pt-1 mb-n1">{{ __('lang.hello') }}</h5>
     <p class="mb-0 font-11">{{ Auth::user()->username }}</p>
     <div class="rank-display mt-1">
@@ -211,6 +520,23 @@ body {
         </div>
     </div>
 </div>
+
+<!-- Simple Ranking Section -->
+@if($next_rank_requirement)
+<div class="simple-rank-section mt-3">
+    <a href="{{ route('user.rank.requirements') }}" class="rank-unlock-btn">
+        <i class="bi bi-lock-fill"></i>
+        <span>Complete to unlock</span>
+    </a>
+</div>
+@else
+<div class="max-rank-section mt-3">
+    <div class="max-rank-badge">
+        <i class="bi bi-crown-fill"></i>
+        <span>Maximum Rank Achieved!</span>
+    </div>
+</div>
+@endif
 
             <div class="align-self-center ms-auto text-end">
                <i class="refress bi bi-arrow-clockwise"></i>
@@ -243,7 +569,7 @@ body {
                  
                </div>
                <div class="align-self-center ms-auto">
-                  <h4 class="pt-1 mb-n1 color-green-dark">${{ number_format($refercom, 2) }}</h4>
+                  <h4 class="pt-1 mb-n1 color-green-dark">${{ number_format($total_referral_income, 2) }}</h4>
                </div>
             </a>
             <div class="divider my-2 opacity-50"></div>
@@ -263,6 +589,77 @@ body {
    </div>
 
 </br>
+
+<!-- Team Statistics Section -->
+<div class="card card-style bg-dark text-white shadow-lg mb-4">
+   <div class="content">
+      <h5 class="text-white text-center mb-3">Team Statistics</h5>
+      
+      <!-- Direct Members Section -->
+      <div class="row g-2 mb-3">
+         <div class="col-12">
+            <h6 class="text-white-50 mb-2">Direct Members</h6>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-primary bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Total Direct</h6>
+               <span class="text-primary fw-bold">{{ $direct_member_count }} Members</span>
+            </div>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-success bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Active</h6>
+               <span class="text-success fw-bold">{{ $direct_active_members }} Members</span>
+            </div>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-warning bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Inactive</h6>
+               <span class="text-warning fw-bold">{{ $direct_inactive_members }} Members</span>
+            </div>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-info bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Direct B</h6>
+               <span class="text-info fw-bold small">${{ number_format($direct_business_total, 2) }}</span>
+            </div>
+         </div>
+      </div>
+      
+      <!-- Total Team Section -->
+      <div class="row g-2 mb-3">
+         <div class="col-12">
+            <h6 class="text-white-50 mb-2">Total Team (All Downline Levels)</h6>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-purple bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Total Team</h6>
+               <span class="text-light fw-bold">{{ $total_team_members }} Members</span>
+            </div>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-success bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Active Team</h6>
+               <span class="text-success fw-bold">{{ $total_active_team_members }} Members</span>
+            </div>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-warning bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Inactive Team</h6>
+               <span class="text-warning fw-bold">{{ $total_inactive_team_members }} Members</span>
+            </div>
+         </div>
+         <div class="col-6 col-md-3">
+            <div class="text-center p-2 bg-info bg-opacity-10 rounded">
+               <h6 class="text-white mb-1 small">Total DB</h6>
+               <span class="text-info fw-bold small">${{ number_format($total_downline_business, 2) }}</span>
+            </div>
+         </div>
+      </div>
+      
+     
+   </div>
+</div>
 
 <div class="content menu_button">
     <div class="button_ruls d-flex flex-wrap text-center justify-content-center">
@@ -301,6 +698,93 @@ body {
                 </div>
             </a>
             <h6 class="menu-label">Our Team</h6>
+        </div>
+
+    </div>
+</div>
+
+
+<div class="content menu_button">
+    <div class="button_ruls d-flex flex-wrap text-center justify-content-center">
+
+        <div class="menu-item mb-4">
+            <a href="{{ route('user.deposit') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/customer-service.png') }}" alt="deposit">
+                </div>
+            </a>
+            <h6 class="menu-label">Customer Support</h6>
+        </div>
+
+        <div class="menu-item mb-4">
+            <a href="{{ URL('/https://www.youtube.com/channel/UC3Y33h3h3h3h3h3h3h3h3h') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/youtube.png') }}" alt="withdraw">
+                </div>
+            </a>
+            <h6 class="menu-label">Youtube</h6>
+        </div>
+
+        <div class="menu-item mb-4">
+            <a href="{{ route('user.invite') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/zoom.png') }}" alt="invite">
+                </div>
+            </a>
+            <h6 class="menu-label">Zoom</h6>
+        </div>
+
+        <div class="menu-item mb-4">
+            <a href="{{ URL('/https://www.kimi.com') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/telegram.png') }}" alt="team">
+                </div>
+            </a>
+            <h6 class="menu-label">Telegram Support</h6>
+        </div>
+
+    </div>
+</div>
+
+
+
+<div class="content menu_button">
+    <div class="button_ruls d-flex flex-wrap text-center justify-content-center">
+
+        <div class="menu-item mb-4">
+            <a href="{{ URL('/user/rule') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/court.png') }}" alt="deposit">
+                </div>
+            </a>
+            <h6 class="menu-label">Rules</h6>
+        </div>
+
+        <div class="menu-item mb-4">
+            <a href="{{ URL('/user/about') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/aboutX.png') }}" alt="withdraw">
+                </div>
+            </a>
+            <h6 class="menu-label">About</h6>
+        </div>
+
+        <div class="menu-item mb-4">
+            <a href="{{ URL('https://www.lastpass.com/features/password-generator') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/buy.png') }}" alt="invite">
+                </div>
+            </a>
+            <h6 class="menu-label">BUY</h6>
+        </div>
+
+        <div class="menu-item mb-4">
+            <a href="{{ URL('/https://www.kimi.com') }}" class="menu-link">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/selling.png') }}" alt="team">
+                </div>
+            </a>
+            <h6 class="menu-label">Sell</h6>
         </div>
 
     </div>
@@ -473,6 +957,11 @@ body {
    </div>
    <div class="gap-tool"></div>
 </div>
+
+
+
+
+
 
 
 
