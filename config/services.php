@@ -30,4 +30,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'bscscan' => [
+        'api_key' => env('BSC_API_KEY', '821ZCZRKFTW3RHUJQN4XHW77FCNXR2PZWK'),
+        'rpc_url' => env('BSC_RPC_URL', 'https://bsc-dataseed1.binance.org'),
+        'network' => env('BSC_NETWORK', 'mainnet'),
+        'usdt_contract' => env('USDT_CONTRACT_ADDRESS', '0x55d398326f99059fF775485246999027B3197955'),
+    ],
+
 ];

@@ -7,24 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use App\Models\Investment;
-use App\Models\ReferralCommission;
-use App\Models\RankReward;
-use App\Models\RankRequirement;
-use App\Models\History;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
-        'email',
+        'email', 
         'password',
         'rank',
         'refer_id',
@@ -41,24 +31,16 @@ class User extends Authenticatable
         'wallet_private_key',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
         'wallet_private_key',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'balance' => 'decimal:2',
+        'refer_commission' => 'decimal:2'
     ];
 
     /**
@@ -68,24 +50,44 @@ class User extends Authenticatable
     {
         parent::boot();
         
-        // Update rank when balance is updated
         static::updated(function ($user) {
             if ($user->isDirty('balance')) {
-                $user->updateRank();
+                // Trigger rank upgrade check when balance changes
+                try {
+                    $rankUpgradeService = new \App\Services\RankUpgradeService();
+                    $rankUpgradeService->checkUserRankUpgrade($user);
+                } catch (\Exception $e) {
+                    \Log::error("Auto rank upgrade failed for user {$user->id}: " . $e->getMessage());
+                }
             }
         });
     }
 
-    public function trx()
-    {
-        return $this->hasOne(Addresstrx::class, 'user_id');
-    }
 
+/**
+ * Clear the team business volume cache for this user and optionally uplines
+ */
+public function clearTeamBusinessVolumeCache()
+{
+    // Clear this user's team volume cache
+    \Cache::forget('team_volume_'.$this->id);
+
+    // Optionally, clear cache for uplines if you have a parent_id or hierarchy
+    if ($this->parent_id) {
+        $parent = self::find($this->parent_id);
+        if ($parent) {
+            $parent->clearTeamBusinessVolumeCache();
+        }
+    }
+}
+
+
+
+    // Relationships
     public function deposites()
     {
         return $this->hasMany(Deposite::class, 'user_id');
     }
-
 
     public function withdraws()
     {
@@ -118,427 +120,184 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'refer_id');
     }
 
+    public function directReferrals()
+    {
+        return $this->hasMany(User::class, 'refer_id');
+    }
+
     public function referralCommissions()
     {
         return $this->hasMany(ReferralCommission::class, 'referrer_id');
     }
 
-    /**
-     * Get all rank rewards earned by this user
-     */
     public function rankRewards()
     {
-        return $this->hasMany(RankReward::class);
+        return $this->hasMany(RankReward::class, 'user_id');
     }
 
     /**
-     * Get team business volume (total active investment of all downline users) - Optimized with Caching
-     */
-    public function getTeamBusinessVolume()
-    {
-        // Cache key for team business volume
-        $cacheKey = "team_bv_{$this->id}";
-        
-        // Try to get from cache first (cache for 5 minutes)
-        return \Cache::remember($cacheKey, 300, function () {
-            // Get all downline user IDs efficiently
-            $downlineIds = $this->getDownlineUserIds();
-            
-            if (empty($downlineIds)) {
-                return 0;
-            }
-            
-            // Single query to get total active investments for all downline users
-            return \App\Models\Investment::whereIn('user_id', $downlineIds)
-                                        ->where('status', 'active')
-                                        ->sum('amount');
-        });
-    }
-    
-    /**
-     * Clear team business volume cache
-     */
-    public function clearTeamBusinessVolumeCache()
-    {
-        $cacheKey = "team_bv_{$this->id}";
-        \Cache::forget($cacheKey);
-        
-        // Also clear cache for upline users since their team volume changed
-        $uplineUser = $this->referrer;
-        $level = 0;
-        while ($uplineUser && $level < 20) {
-            $uplineCacheKey = "team_bv_{$uplineUser->id}";
-            \Cache::forget($uplineCacheKey);
-            $uplineUser = $uplineUser->referrer;
-            $level++;
-        }
-    }
-
-    /**
-     * Get team depth (maximum level of downline)
-     */
-    public function getTeamDepth()
-    {
-        return $this->calculateMaxDepth(1);
-    }
-
-    /**
-     * Calculate maximum depth recursively
-     */
-    private function calculateMaxDepth($currentDepth)
-    {
-        $directReferrals = $this->referrals;
-        
-        if ($directReferrals->isEmpty()) {
-            return $currentDepth;
-        }
-        
-        $maxDepth = $currentDepth;
-        
-        foreach ($directReferrals as $referral) {
-            $depth = $referral->calculateMaxDepth($currentDepth + 1);
-            $maxDepth = max($maxDepth, $depth);
-        }
-        
-        return $maxDepth;
-    }
-
-    /**
-     * Get personal investment amount (only active investments)
-     */
-    public function getPersonalInvestment()
-    {
-        return $this->investments()->where('status', 'active')->sum('amount');
-    }
-
-    /**
-     * Get all downline users recursively (optimized with single query)
-     */
-    public function getAllDownlineUsers()
-    {
-        // Use a more efficient approach with a single recursive query
-        $downlineIds = $this->getDownlineUserIds();
-        
-        if (empty($downlineIds)) {
-            return collect();
-        }
-        
-        return User::whereIn('id', $downlineIds)->get();
-    }
-    
-    /**
-     * Get all downline user IDs using recursive CTE (Common Table Expression)
-     */
-    public function getDownlineUserIds()
-    {
-        // Use raw SQL with recursive CTE for better performance
-        $sql = "
-            WITH RECURSIVE downline_tree AS (
-                -- Base case: direct referrals
-                SELECT id, refer_id, 1 as level
-                FROM users 
-                WHERE refer_id = ?
-                
-                UNION ALL
-                
-                -- Recursive case: get referrals of referrals
-                SELECT u.id, u.refer_id, dt.level + 1
-                FROM users u
-                INNER JOIN downline_tree dt ON u.refer_id = dt.id
-                WHERE dt.level < 20  -- Prevent infinite recursion
-            )
-            SELECT id FROM downline_tree
-        ";
-        
-        try {
-            $results = \DB::select($sql, [$this->id]);
-            return array_column($results, 'id');
-        } catch (\Exception $e) {
-            // Fallback to the old method if CTE is not supported
-            return $this->getDownlineUserIdsLegacy();
-        }
-    }
-    
-    /**
-     * Legacy method for databases that don't support CTE
-     */
-    private function getDownlineUserIdsLegacy()
-    {
-        $downlineIds = [];
-        $currentLevelIds = [$this->id];
-        $level = 0;
-        
-        while (!empty($currentLevelIds) && $level < 20) {
-            $nextLevelIds = User::whereIn('refer_id', $currentLevelIds)
-                                ->pluck('id')
-                                ->toArray();
-            
-            if (empty($nextLevelIds)) {
-                break;
-            }
-            
-            $downlineIds = array_merge($downlineIds, $nextLevelIds);
-            $currentLevelIds = $nextLevelIds;
-            $level++;
-        }
-        
-        return $downlineIds;
-    }
-
-    /**
-     * Check if user is eligible for rank upgrade
-     */
-    public function checkRankUpgradeEligibility()
-    {
-        $currentRank = $this->rank ?? 0;
-        $nextRank = $currentRank + 1;
-        
-        $requirement = RankRequirement::getRequirementsForRank($nextRank);
-        
-        if (!$requirement) {
-            return false; // No more ranks available
-        }
-        
-        return $requirement->checkUserEligibility($this);
-    }
-
-    /**
-     * Calculate highest eligible rank
-     */
-    public function calculateEligibleRank()
-    {
-        $currentRank = $this->rank ?? 0;
-        $eligibleRank = $currentRank;
-        
-        // Check each rank from current+1 to maximum
-        for ($rank = $currentRank + 1; $rank <= 12; $rank++) {
-            $requirement = RankRequirement::getRequirementsForRank($rank);
-            
-            if ($requirement && $requirement->checkUserEligibility($this)) {
-                $eligibleRank = $rank;
-            } else {
-                break; // Stop at first rank that doesn't meet requirements
-            }
-        }
-        
-        return $eligibleRank;
-    }
-
-    /**
-     * Process automatic rank upgrade
+     * Process rank upgrade
      */
     public function processRankUpgrade()
     {
-        $oldRank = $this->rank ?? 0;
-        $eligibleRank = $this->calculateEligibleRank();
-        
-        if ($eligibleRank > $oldRank) {
-            // Update user rank
-            $this->update(['rank' => $eligibleRank]);
-            
-            // Process rank rewards for each rank upgrade
-            for ($rank = $oldRank + 1; $rank <= $eligibleRank; $rank++) {
-                $this->processRankUpgradeReward($rank);
-                $this->processLeaderRewards($rank);
-            }
-            
-            return $eligibleRank;
-        }
-        
-        return $oldRank;
+        $rankUpgradeService = new \App\Services\RankUpgradeService();
+        return $rankUpgradeService->checkUserRankUpgrade($this);
     }
 
+    
+    
     /**
-     * Process rank upgrade reward for the user
-     */
-    private function processRankUpgradeReward($rank)
-    {
-        $requirement = RankRequirement::getRequirementsForRank($rank);
-        
-        if ($requirement && $requirement->reward_amount > 0) {
-            $oldRank = $this->rank ?? 0;
-            $previousBalance = $this->balance;
-            
-            // Create rank reward record (auto-approved)
-            $rankReward = RankReward::create([
-                'user_id' => $this->id,
-                'old_rank' => $oldRank,
-                'new_rank' => $rank,
-                'reward_amount' => $requirement->reward_amount,
-                'reward_type' => 'rank_achievement'
-                // status and processed_at will be set automatically in boot method
-            ]);
-            
-            // Balance update is handled automatically in RankReward boot method
-            $newBalance = $this->fresh()->balance;
-            
-            // Create history record
-            History::create([
-                'user_id' => $this->id,
-                'amount' => $requirement->reward_amount,
-                'type' => 'rank_upgrade_reward'
-            ]);
-            
-            // Create transaction log
-            \App\Models\Log::createTransactionLog(
-                $this->id,
-                'rank_reward',
-                $requirement->reward_amount,
-                $previousBalance,
-                $newBalance,
-                'App\\Models\\RankReward',
-                $rankReward->id,
-                "Rank {$rank} achievement reward",
-                [
-                    'old_rank' => $oldRank,
-                    'new_rank' => $rank,
-                    'reward_type' => 'rank_achievement'
-                ]
-            );
-        }
+ * Get all downline user IDs recursively
+ */
+
+public function getDownlineUserIds($depth = 0, $maxDepth = 40)
+{
+    if ($depth >= $maxDepth) {
+        return [];
     }
+    
+    $downlineIds = [];
+    
+    // Get all direct referrals
+    $directReferrals = User::where('refer_id', $this->id)->get();
+    
+    foreach ($directReferrals as $referral) {
+        $downlineIds[] = $referral->id;
+        
+        // Recursively get their downline
+        $subDownlineIds = $referral->getDownlineUserIds($depth + 1, $maxDepth);
+        $downlineIds = array_merge($downlineIds, $subDownlineIds);
+    }
+    
+    return array_unique($downlineIds);
+}
+
+
+
+
+
+
+/**
+ * Get team business volume
+ */
+public function getTeamBusinessVolume($depth = 0, $maxDepth = 40)
+{
+    if ($depth >= $maxDepth) {
+        return 0;
+    }
+    
+    $totalVolume = 0;
+    $directReferrals = $this->referrals()->where('status', 'active')->get();
+    
+    foreach ($directReferrals as $referral) {
+        // Add referral's investment
+        $referralInvestment = $referral->investments()
+                                      ->where('status', 'active')
+                                      ->sum('amount');
+        $totalVolume += $referralInvestment;
+        
+        // Add team volume from this referral
+        $totalVolume += $referral->getTeamBusinessVolume($depth + 1, $maxDepth);
+    }
+    
+    return $totalVolume;
+}
+
+/**
+ * Get personal investment
+ */
+public function getPersonalInvestment()
+{
+    return $this->investments()
+                ->where('status', 'active')
+                ->sum('amount');
+}
+
+/**
+ * Create transaction log method for User model
+ */
+public function createTransactionLog($data)
+{
+    return \App\Models\Log::createTransactionLog(
+        $this->id,
+        $data['type'],
+        $data['amount'],
+        $data['previous_balance'],
+        $data['new_balance'],
+        isset($data['model']) ? $data['model'] : 'App\\Models\\User',
+        isset($data['reference_id']) ? $data['reference_id'] : null,
+        isset($data['description']) ? $data['description'] : $data['type'],
+        isset($data['metadata']) ? $data['metadata'] : []
+    );
+}
 
     /**
-     * Process leader rewards for upline users
-     */
-    private function processLeaderRewards($rank)
-    {
-        $uplineUser = $this->referrer;
-        $level = 1;
-        
-        while ($uplineUser && $level <= 10) { // Limit to 10 levels
-            // Check if upline user is eligible for leader bonus
-            if ($uplineUser->rank >= $rank) {
-                $leaderBonus = $this->calculateLeaderBonus($rank, $level);
-                
-                if ($leaderBonus > 0) {
-                    $previousBalance = $uplineUser->balance;
-                    
-                    // Create leader reward
-                    $leaderReward = RankReward::create([
-                        'user_id' => $uplineUser->id,
-                        'old_rank' => $uplineUser->rank ?? 0,
-                        'new_rank' => $uplineUser->rank ?? 0,
-                        'reward_amount' => $leaderBonus,
-                        'reward_type' => 'bonus',
-                        'status' => 'processed',
-                        'processed_at' => now()
-                    ]);
-                    
-                    // Update upline user balance
-                    $uplineUser->increment('balance', $leaderBonus);
-                    $newBalance = $uplineUser->fresh()->balance;
-                    
-                    // Create history record
-                    History::create([
-                        'user_id' => $uplineUser->id,
-                        'amount' => $leaderBonus,
-                        'type' => 'leader_bonus',
-                        'description' => "Leader bonus from {$this->username} rank {$rank} upgrade",
-                        'status' => 'completed'
-                    ]);
-                    
-                    // Create transaction log
-                    \App\Models\Log::createTransactionLog(
-                        $uplineUser->id,
-                        'leader_bonus',
-                        $leaderBonus,
-                        $previousBalance,
-                        $newBalance,
-                        'App\\Models\\RankReward',
-                        $leaderReward->id,
-                        "Leader bonus from {$this->username} rank {$rank} upgrade",
-                        [
-                            'source_user_id' => $this->id,
-                            'source_username' => $this->username,
-                            'rank_achieved' => $rank,
-                            'level' => $level,
-                            'reward_type' => 'leader_bonus'
-                        ]
-                    );
-                }
-            }
-            
-            $uplineUser = $uplineUser->referrer;
-            $level++;
-        }
-    }
-
-    /**
-     * Calculate leader bonus amount
-     */
-    private function calculateLeaderBonus($rank, $level)
-    {
-        // Leader bonus structure (percentage of rank reward)
-        $bonusPercentages = [
-            1 => 0.10, // 10% for level 1
-            2 => 0.08, // 8% for level 2
-            3 => 0.06, // 6% for level 3
-            4 => 0.04, // 4% for level 4
-            5 => 0.02, // 2% for level 5
-        ];
-        
-        if (!isset($bonusPercentages[$level])) {
-            return 0;
-        }
-        
-        $requirement = RankRequirement::getRequirementsForRank($rank);
-        
-        if (!$requirement) {
-            return 0;
-        }
-        
-        return $requirement->reward_amount * $bonusPercentages[$level];
-    }
-
-    /**
-     * Update user rank (legacy method for compatibility)
+     * Update user rank based on current eligibility
+     * 
+     * @return int Current rank after update
      */
     public function updateRank()
     {
-        return $this->processRankUpgrade();
+        try {
+            $rankService = app(\App\Services\RankUpgradeService::class);
+            return $rankService->checkUserRankUpgrade($this);
+        } catch (\Exception $e) {
+            \Log::error("Failed to update rank for user {$this->id}: " . $e->getMessage());
+            return $this->rank ?? 0;
+        }
     }
 
     /**
-     * Get rank name
+     * Get the rank name for the user's current rank
+     * 
+     * @return string Rank name
      */
     public function getRankName()
     {
-        $rankRequirement = \App\Models\RankRequirement::where('rank', $this->rank)->first();
+        $currentRank = $this->rank ?? 0;
         
-        if ($rankRequirement) {
-            return $rankRequirement->getRankName();
+        if ($currentRank <= 0) {
+            return 'No Rank';
         }
-        
-        // Fallback for unknown ranks
-        return 'Rookie';
-    }
 
-    /**
-     * Get the transaction logs for the user
-     */
-    public function transactionLogs()
-    {
-        return $this->hasMany(TransactionLog::class);
-    }
+        try {
+            // Try to get rank name from database first
+            $rankRequirement = \App\Models\RankRequirement::where('rank', $currentRank)
+                ->where('is_active', true)
+                ->first();
+            
+            if ($rankRequirement && $rankRequirement->rank_name) {
+                return $rankRequirement->rank_name;
+            }
 
-public function directReferrals()
-{
-    return $this->hasMany(User::class, 'refer_id', 'id');
-}
-    /**
-     * Create a transaction log entry
-     */
-    public function createTransactionLog(array $data)
-    {
-        return $this->transactionLogs()->create([
-            'type' => $data['type'],
-            'amount' => $data['amount'],
-            'previous_balance' => $data['previous_balance'],
-            'new_balance' => $data['new_balance'],
-            'metadata' => $data['metadata'] ?? null,
-            'reference_id' => $data['reference_id'] ?? null,
-            'reference_type' => $data['reference_type'] ?? null,
-        ]);
+            // Fallback to hardcoded rank names
+            $rankNames = [
+                1 => 'Rookie',
+                2 => 'Bronze',
+                3 => 'Bronze+',
+                4 => 'Silver',
+                5 => 'Silver+',
+                6 => 'Gold',
+                7 => 'Gold+',
+                8 => 'Platinum',
+                9 => 'Platinum+',
+                10 => 'Diamond',
+                11 => 'Diamond+',
+                12 => 'Master',
+                13 => 'Grand Master',
+                14 => 'Champion',
+                15 => 'Legend',
+                16 => 'Mythic',
+                17 => 'Immortal',
+                18 => 'Divine'
+            ];
+
+            return $rankNames[$currentRank] ?? "Rank {$currentRank}";
+            
+        } catch (\Exception $e) {
+            \Log::error("Failed to get rank name for user {$this->id}: " . $e->getMessage());
+            return "Rank {$currentRank}";
+        }
     }
+    
 }

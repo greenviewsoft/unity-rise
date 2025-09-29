@@ -3,21 +3,17 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Apikey;
-use App\Models\Commission;
+use App\Models\ReferralCommissionLevel;
 use App\Models\Deposite;
 use App\Models\Info;
-use App\Models\Settingtrx;
 use App\Models\Sitesetting;
 use App\Models\Spinamount;
 use App\Models\User;
-
 use App\Models\Withdraw;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client;
 use Exception;
-use App\Models\Addresstrx;
 use App\Models\Order;
 use App\Models\Energy;
 use App\Models\History;
@@ -30,10 +26,37 @@ class CronController extends Controller
     public function cron()
     {
         set_time_limit(6000);
-        $this->autoReceive();
-        $this->orderCheck();
-
-        $this->withdrawSend();
+        
+        // Log cron execution
+        Log::info('Cron job started at ' . now());
+        
+        try {
+            // BEP20 USDT Deposits Processing
+            $this->processBep20Deposits();
+            
+            // Order Processing
+            $this->orderCheck();
+            
+            // Auto-receive Processing
+            $this->autoReceive();
+            
+            // Withdrawal Processing
+            $this->withdrawSend();
+            
+            // Investment Profits (only on weekdays at 9 AM)
+            $this->processInvestmentProfits();
+            
+            // BEP20 Monitoring
+            $this->processBep20Monitoring();
+            
+            // Rank Upgrades Processing
+            $this->processRankUpgrades();
+            
+            Log::info('Cron job completed successfully at ' . now());
+            
+        } catch (Exception $e) {
+            Log::error('Cron job failed: ' . $e->getMessage());
+        }
     }
 
     public function autoReceive()
@@ -120,143 +143,34 @@ class CronController extends Controller
     public function orderCheck()
     {
         $now = Carbon::now();
-        $thirtyMinutesAgo = $now->subMinutes(30);
+        $oneHourAgo = $now->subHours(1); // Increased to 1 hour to process older orders
 
-        $orders = Order::where('created_at', '>=', $thirtyMinutesAgo)
-            ->where('status', '0')
+        $orders = Order::where('created_at', '>=', $oneHourAgo)
+            ->whereIn('status', ['0', 'pending'])
             ->get();
 
         foreach ($orders as $order) {
             try {
-                $settingtrx = Settingtrx::find(1);
-                $addresstrx = Addresstrx::find($order->txid);
-                $apikey = Apikey::find(1);
+                // USDT-TRC20 processing removed - deprecated
 
-                if ($order->currency == 'USDT-TRC20') {
-                    $client = new Client();
-                    $response = $client->post($apikey->base_url.'api/usdt-balance?address=' . $addresstrx->address_base58 . '&apikey=' . $apikey->apikey);
-                    $responseBody = $response->getBody()->getContents();
-                    $status = $response->getStatusCode();
-
-                    $setting = Sitesetting::find(1);
-                    if ($setting->development == 'true') {
-                        $balance = $order->amount;
-                    } else {
-                        $balance = json_decode($responseBody, true);
-                    }
-
-                    if ($balance > 0) {
-                        //now create deposite model data
-                        $deposit = new Deposite();
-                        $deposit->order_number = $order->order_number;
-                        $deposit->currency = $order->currency;
-                        $deposit->user_id = $order->user_id;
-                        $deposit->amount = $balance;
-                        $deposit->txid = 'USDT-trc20';
-                        $deposit->save();
-
-                        //now update the user balance in usdt
-                        $user = User::find($order->user_id);
-                        $previousBalance = $user->balance;
-                        $user->balance = $user->balance + $balance;
-                        $user->save();
-                        $newBalance = $user->balance;
+                // Handle BEP20 USDT deposits using improved service
+                if ($order->currency == 'USDT-BEP20') {
+                    try {
+                        $bep20Service = new \App\Services\Bep20DepositService();
+                        $result = $bep20Service->processAutomaticDeposit($order);
                         
-                        // Create transaction log
-                        \App\Models\Log::createTransactionLog(
-                            $user->id,
-                            'deposit',
-                            $balance,
-                            $previousBalance,
-                            $newBalance,
-                            'App\\Models\\Deposite',
-                            $deposit->id,
-                            "Auto deposit via {$order->currency} - Order: {$order->order_number}",
-                            [
-                                'order_number' => $order->order_number,
-                                'currency' => $order->currency,
-                                'txid' => 'USDT-trc20',
-                                'payment_method' => 'crypto_auto',
-                                'processed_by' => 'cron'
-                            ]
-                        );
-
-                        //now update the order as success
-                        $order->status = '1';
-                        $order->save();
-                    }
-                }
-
-                if ($order->currency == 'TRX') {
-                    $client = new Client();
-                    $response = $client->get($apikey->base_url.'api/trx-balance?apikey=' . $apikey->apikey . '&address=' . $addresstrx->address_base58);
-                    $responseBody = $response->getBody()->getContents();
-                    $status = $response->getStatusCode();
-                    $balancetrx = json_decode($responseBody, true);
-
-                    $balance = $balancetrx * $settingtrx->conversion;
-
-                    if ($balance > 0) {
-                        //now transfer the balance to main admin account
-                        $apikey = $apikey->apikey;
-                        $sender_address = $addresstrx->address_base58;
-                        $sender_privatekey = $addresstrx->private_key;
-                        $receiver_address = $settingtrx->receiver_address;
-
-                        $client = new Client();
-                        $response = $client->post($apikey->base_url.'api/trx-transfer?apikey=' . $apikey . '&sender_address=' . $sender_address . '&sender_privatekey=' . $sender_privatekey . '&receiver_address=' . $receiver_address . '&amount=' . $balancetrx);
-                        $responseBody = $response->getBody()->getContents();
-                        $status = $response->getStatusCode();
-                        $data = json_decode($responseBody);
-
-                        if (isset($data->data)) {
-                            $txid = $data->data->txid;
+                        if ($result['success']) {
+                            Log::info("BEP20 Auto Deposit Success: Order {$order->order_number}, Amount: {$order->amount}, TX: " . ($result['tx_hash'] ?? 'N/A'));
                         } else {
-                            $txid = 'Fail';
-                            Log::channel('single')->info('Failed to get transaction id' . 'order-id-' . $order->order_number);
+                            Log::info("BEP20 Auto Check: {$result['message']} for order {$order->order_number}");
                         }
-
-                        //now create deposite model data
-                        $deposit = new Deposite();
-                        $deposit->order_number = $order->order_number;
-                        $deposit->currency = $order->currency;
-                        $deposit->user_id = $order->user_id;
-                        $deposit->amount = $balance;
-                        $deposit->txid = $txid;
-                        $deposit->save();
-
-                        //now update the user balance in usdt
-                        $user = User::find($order->user_id);
-                        $previousBalance = $user->balance;
-                        $user->balance = $user->balance + $balance;
-                        $user->save();
-                        $newBalance = $user->balance;
                         
-                        // Create transaction log
-                        \App\Models\Log::createTransactionLog(
-                            $user->id,
-                            'deposit',
-                            $balance,
-                            $previousBalance,
-                            $newBalance,
-                            'App\\Models\\Deposite',
-                            $deposit->id,
-                            "Auto TRX deposit - Order: {$order->order_number}",
-                            [
-                                'order_number' => $order->order_number,
-                                'currency' => $order->currency,
-                                'txid' => $txid,
-                                'payment_method' => 'trx_auto',
-                                'processed_by' => 'cron',
-                                'conversion_rate' => $settingtrx->conversion
-                            ]
-                        );
-
-                        //now update the order as success
-                        $order->status = '1';
-                        $order->save();
+                    } catch (Exception $e) {
+                        Log::error("BEP20 Auto Processing Error for order {$order->order_number}: " . $e->getMessage());
                     }
                 }
+
+                // TRX processing removed - deprecated
 
                 //check if energry
                 $checkenergy = Energy::where('user_id', $order->user_id)
@@ -296,99 +210,8 @@ class CronController extends Controller
                     }
                 }
 
-                //now refer commission
-                $commission = Commission::find(1);
-                $user = User::find($order->user_id);
-                $firstuser = User::find($user->refer_id);
-                if (isset($firstuser)) {
-                    $refercommission = new Refercommission();
-                    $refercommission->user_id = $firstuser->id;
-                    $refercommission->level = '1';
-                    $refercommission->deposite_amount = $balance;
-                    $refercommission->commission = ($balance / 100) * $commission->refer_com1;
-                    $refercommission->refuser = $user->id;
-                    $refercommission->save();
-
-                    $firstuser->refer_commission = $firstuser->refer_commission + $refercommission->commission;
-                    $firstuser->balance = $firstuser->balance + $refercommission->commission;
-                    $firstuser->save();
-
-                    //save history
-                    $history = new History();
-                    $history->user_id = $firstuser->id;
-                    $history->amount = $refercommission->commission;
-                    $history->type = 'Refer commmission';
-                    $history->save();
-
-                    $seconduser = User::find($firstuser->refer_id);
-
-                    if (isset($seconduser)) {
-                        $refercommission2 = new Refercommission();
-                        $refercommission2->user_id = $seconduser->id;
-                        $refercommission2->level = '2';
-                        $refercommission2->deposite_amount = $balance;
-                        $refercommission2->commission = ($balance / 100) * $commission->refer_com2;
-                        $refercommission2->refuser = $user->id;
-                        $refercommission2->save();
-
-                        $seconduser->refer_commission = $seconduser->refer_commission + $refercommission2->commission;
-                        $seconduser->balance = $seconduser->balance + $refercommission2->commission;
-                        $seconduser->save();
-
-                        //save history
-                        $history = new History();
-                        $history->user_id = $seconduser->id;
-                        $history->amount = $refercommission2->commission;
-                        $history->type = 'Refer commmission';
-                        $history->save();
-
-                        $thirduser = User::find($seconduser->refer_id);
-
-                        if (isset($thirduser)) {
-                            $refercommission3 = new Refercommission();
-                            $refercommission3->user_id = $thirduser->id;
-                            $refercommission3->level = '3';
-                            $refercommission3->deposite_amount = $balance;
-                            $refercommission3->commission = ($balance / 100) * $commission->refer_com3;
-                            $refercommission3->refuser = $user->id;
-                            $refercommission3->save();
-
-                            $thirduser->refer_commission = $thirduser->refer_commission + $refercommission3->commission;
-                            $thirduser->balance = $thirduser->balance + $refercommission3->commission;
-                            $thirduser->save();
-
-                            //save history
-                            $history = new History();
-                            $history->user_id = $thirduser->id;
-                            $history->amount = $refercommission3->commission;
-                            $history->type = 'Refer commmission';
-                            $history->save();
-
-                            $fourthuser = User::find($thirduser->refer_id);
-
-                            if (isset($fourthuser)) {
-                                $refercommission4 = new Refercommission();
-                                $refercommission4->user_id = $fourthuser->id;
-                                $refercommission4->level = '4';
-                                $refercommission4->deposite_amount = $balance;
-                                $refercommission4->commission = ($balance / 100) * $commission->refer_com4;
-                                $refercommission4->refuser = $user->id;
-                                $refercommission4->save();
-
-                                $fourthuser->refer_commission = $fourthuser->refer_commission + $refercommission4->commission;
-                                $fourthuser->balance = $fourthuser->balance + $refercommission4->commission;
-                                $fourthuser->save();
-
-                                //save history
-                                $history = new History();
-                                $history->user_id = $fourthuser->id;
-                                $history->amount = $refercommission4->commission;
-                                $history->type = 'Refer commmission';
-                                $history->save();
-                            }
-                        }
-                    }
-                }
+                // Old commission system replaced - now handled by ReferralCommissionService
+                // This is triggered automatically when investment/deposit is processed
             } catch (Exception $e) {
                 $order->status = '2';
                 $order->save();
@@ -473,6 +296,66 @@ class CronController extends Controller
                     Log::channel('single')->info($e->getMessage());
                 }
             }
+        }
+    }
+    
+    /**
+     * Process BEP20 USDT Deposits
+     */
+    private function processBep20Deposits()
+    {
+        try {
+            Log::info('Processing BEP20 deposits...');
+            \Artisan::call('deposits:process-bep20');
+            Log::info('BEP20 deposits processing completed');
+        } catch (Exception $e) {
+            Log::error('BEP20 deposits processing failed: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Process Investment Profits (only on weekdays at 9 AM)
+     */
+    private function processInvestmentProfits()
+    {
+        try {
+            $now = now();
+            // Only run on weekdays at 9 AM
+            if ($now->isWeekday() && $now->hour == 9 && $now->minute < 5) {
+                Log::info('Processing investment profits...');
+                \Artisan::call('investment:distribute-profit');
+                Log::info('Investment profits processing completed');
+            }
+        } catch (Exception $e) {
+            Log::error('Investment profits processing failed: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Process BEP20 Monitoring
+     */
+    private function processBep20Monitoring()
+    {
+        try {
+            Log::info('Processing BEP20 monitoring...');
+            \Artisan::call('monitor:bep20-deposits', ['--notify-stuck' => true]);
+            Log::info('BEP20 monitoring completed');
+        } catch (Exception $e) {
+            Log::error('BEP20 monitoring failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Process rank upgrades for all users
+     */
+    private function processRankUpgrades()
+    {
+        try {
+            Log::info('Processing rank upgrades...');
+            \Artisan::call('rank:check-upgrades', ['--limit' => 50]);
+            Log::info('Rank upgrades processing completed');
+        } catch (Exception $e) {
+            Log::error('Rank upgrades processing failed: ' . $e->getMessage());
         }
     }
 }

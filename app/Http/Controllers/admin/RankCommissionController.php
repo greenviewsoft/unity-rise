@@ -97,13 +97,26 @@ class RankCommissionController extends Controller
         
         $commissionLevel = ReferralCommissionLevel::findOrFail($id);
         
+        // Additional validation
+        if ($request->commission_rate < 0 || $request->commission_rate > 100) {
+            return redirect()->back()
+                           ->withErrors(['commission_rate' => 'Commission rate must be between 0 and 100'])
+                           ->withInput();
+        }
+        
+        if ($request->rank_reward && $request->rank_reward < 0) {
+            return redirect()->back()
+                           ->withErrors(['rank_reward' => 'Rank reward must be positive'])
+                           ->withInput();
+        }
+        
         $commissionLevel->update([
             'commission_rate' => $request->commission_rate,
             'rank_reward' => $request->rank_reward ?? 0,
             'is_active' => $request->has('is_active') ? 1 : 0
         ]);
         
-        return redirect()->route('rankcommission.index')
+        return redirect()->route('admin.rankcommission.index')
                         ->with('success', 'Commission level updated successfully!');
     }
 }

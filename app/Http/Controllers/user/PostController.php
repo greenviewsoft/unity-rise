@@ -3,15 +3,12 @@
 namespace App\Http\Controllers\user;
 
 use App\Http\Controllers\Controller;
-use App\Models\Addresstrx;
-use App\Models\Apikey;
-use App\Models\Commission;
+use App\Models\ReferralCommissionLevel;
 use App\Models\Deposite;
 use App\Models\Energy;
 use App\Models\History;
 use App\Models\Order;
 use App\Models\ReferralCommission;
-use App\Models\Settingtrx;
 use App\Models\Sitesetting;
 use App\Models\Usdtdeposit;
 use App\Models\User;
@@ -111,7 +108,7 @@ class PostController extends Controller
             $order->amount = $request->amount;
             $order->currency = 'USDT-BEP20';
             $order->wallet_address = $user->wallet_address;
-            $order->status = 'pending';
+            $order->status = '0';
             $order->save();
             
             Session::put('bep20_order_id', $order->id);
@@ -138,25 +135,8 @@ class PostController extends Controller
 
     public function trcUpdate(Request $request)
     {
-        if(Auth::user()->crypto_address != null){
-            return redirect()->back();
-        }
-        $this->validate($request, [
-            'crypto_address' => 'required',
-            'password' => 'required',
-        ]);
-
-        if ($request->password != Auth::user()->pshow) {
-            return redirect()
-                ->back()
-                ->with('error', 'Password not match');
-        }
-
-        $user = User::find(Auth::user()->id);
-        $user->crypto_address = $request->crypto_address;
-        $user->save();
-
-        return redirect('user/withdraw')->with('success', 'Crypt trc20 address set successfully');
+        // TRC20 address update deprecated
+        return redirect('user/withdraw')->with('error', 'TRC20 deposits are no longer supported. Use BEP20 USDT instead.');
     }
 
     public function withdrawVal(Request $request)
@@ -204,18 +184,19 @@ class PostController extends Controller
         ->sum('amount');
 
         //check minimu withdraw
-        $commssion = Commission::find(1);
-        $settingtrx = Settingtrx::find(1);
+        // Old Commission model replaced with ReferralCommissionLevel
+        // Commission logic is now handled by ReferralCommissionService
         $balance = Auth::user()->balance;
         $pattern = '/\.\d+/';
-        $authbal = (preg_replace($pattern, '', $balance) - $toaldeposit) - $commssion->bonus;
+        $authbal = preg_replace($pattern, '', $balance) - $toaldeposit;
 
-
-        if ($authbal > $settingtrx->min_withdraw) {
+        // Minimum withdraw amount (replace with app setting)
+        $minWithdraw = 10; // Default minimum withdraw
+        if ($authbal > $minWithdraw) {
             
         } else {
             return response()->json([
-                'error' => 'Min withdraw balance is ' . ($settingtrx->min_withdraw + 1) . ' usd',
+                'error' => 'Min withdraw balance is ' . ($minWithdraw + 1) . ' usd',
             ]);
         }
         if ($authbal < $request->quantity) {
@@ -299,75 +280,41 @@ class PostController extends Controller
     /**
      * Verify BEP20 USDT deposit
      */
-    public function verifyBep20Deposit(Request $request)
-    {
-        try {
-            $orderId = Session::get('bep20_order_id');
-            $order = Order::find($orderId);
+  public function verifyBep20Deposit(Request $request)
+{
+    try {
+        $orderId = Session::get('bep20_order_id');
+        $order = Order::find($orderId);
+
+        if (!$order) {
+            return response()->json(['error' => 'Order not found']);
+        }
+
+        $bep20Service = new \App\Services\Bep20DepositService();
+        $result = $bep20Service->verifyManualDeposit($order);
+
+        if ($result['success']) {
+            Session::forget(['bep20_order_id', 'bep20_wallet_address', 'bep20_amount']);
             
-            if (!$order) {
-                return response()->json(['error' => 'Order not found']);
-            }
-            
-            $bscService = new BscService();
-            $user = User::find(Auth::user()->id);
-            
-            // Check USDT balance in user's wallet
-            $usdtBalance = $bscService->getUsdtBalance($user->wallet_address);
-            
-            if (bccomp($usdtBalance, $order->amount, 6) >= 0) {
-                // Sufficient balance found, transfer to admin wallet
-                $privateKey = decrypt($user->wallet_private_key);
-                $transferResult = $bscService->transferUsdtToAdmin(
-                    $user->wallet_address,
-                    $privateKey,
-                    $order->amount
-                );
-                
-                if ($transferResult['success']) {
-                    // Update user balance
-                    $user->balance += floatval($order->amount);
-                    $user->save();
-                    
-                    // Update order status
-                    $order->status = 'completed';
-                    $order->tx_hash = $transferResult['tx_hash'];
-                    $order->save();
-                    
-                    // Create history record
-                    $history = new History();
-                    $history->user_id = $user->id;
-                    $history->amount = $order->amount;
-                    $history->type = 'Deposit';
-                    $history->method = 'BEP20 USDT';
-                    $history->status = 'Success';
-                    $history->tx_hash = $transferResult['tx_hash'];
-                    $history->save();
-                    
-                    Session::forget(['bep20_order_id', 'bep20_wallet_address', 'bep20_amount']);
-                    
-                    return response()->json([
-                        'success' => 'Deposit verified and processed successfully',
-                        'amount' => $order->amount,
-                        'tx_hash' => $transferResult['tx_hash']
-                    ]);
-                } else {
-                    return response()->json([
-                        'error' => 'Transfer failed: ' . $transferResult['error']
-                    ]);
-                }
-            } else {
-                return response()->json([
-                    'error' => 'Insufficient USDT balance. Required: ' . $order->amount . ', Available: ' . $usdtBalance
-                ]);
-            }
-            
-        } catch (Exception $e) {
             return response()->json([
-                'error' => 'Verification failed: ' . $e->getMessage()
+                'success' => $result['message'],
+                'amount' => $result['amount'],
+                'tx_hash' => $result['tx_hash'],
+                'new_balance' => $result['new_balance']
+            ]);
+        } else {
+            return response()->json([
+                'error' => $result['message']
             ]);
         }
+
+    } catch (Exception $e) {
+        return response()->json([
+            'error' => 'Verification failed: ' . $e->getMessage()
+        ]);
     }
+}
+
 
     public function testBep20System()
     {
@@ -378,23 +325,62 @@ class PostController extends Controller
             $wallet = $bscService->generateWallet();
             
             // Test USDT balance check
-            $balance = $bscService->getUsdtBalance($wallet['address']);
+            $usdtBalance = $bscService->getUsdtBalance($wallet['address']);
+            
+            // Test BNB balance check
+            $bnbBalance = $bscService->getBnbBalance($wallet['address']);
+            
+            // Test gas sufficiency check
+            $hasSufficientGas = $bscService->hasSufficientGas($wallet['address']);
             
             // Test address validation
             $isValid = $bscService->isValidAddress($wallet['address']);
             
+            // Test admin wallet configuration
+            $adminWallet = env('BSC_ADMIN_WALLET_ADDRESS');
+            $adminPrivateKey = env('BSC_ADMIN_PRIVATE_KEY');
+            $adminConfigured = !empty($adminWallet) && !empty($adminPrivateKey);
+            
+            // Test admin wallet BNB balance if configured
+            $adminBnbBalance = null;
+            if ($adminConfigured) {
+                $adminBnbBalance = $bscService->getBnbBalance($adminWallet);
+            }
+            
             return response()->json([
                 'success' => true,
-                'wallet' => $wallet,
-                'balance' => $balance,
-                'is_valid_address' => $isValid,
-                'message' => 'BEP20 system test completed successfully'
+                'test_results' => [
+                    'wallet_generation' => [
+                        'address' => $wallet['address'],
+                        'private_key_length' => strlen($wallet['private_key'])
+                    ],
+                    'balance_checks' => [
+                        'usdt_balance' => $usdtBalance,
+                        'bnb_balance' => $bnbBalance,
+                        'has_sufficient_gas' => $hasSufficientGas
+                    ],
+                    'admin_wallet' => [
+                        'configured' => $adminConfigured,
+                        'address' => $adminWallet,
+                        'bnb_balance' => $adminBnbBalance,
+                        'can_send_gas' => $adminConfigured && $adminBnbBalance > 0.002
+                    ],
+                    'address_validation' => $isValid
+                ],
+                'gas_fee_system' => [
+                    'status' => $adminConfigured ? 'Ready' : 'Not Configured',
+                    'note' => $adminConfigured ? 
+                        'Admin wallet can automatically send BNB for gas fees' : 
+                        'Please configure BSC_ADMIN_WALLET_ADDRESS and BSC_ADMIN_PRIVATE_KEY in .env'
+                ],
+                'message' => 'BEP20 system with gas fee support test completed successfully'
             ]);
             
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Test failed: ' . $e->getMessage()
+                'message' => 'Test failed: ' . $e->getMessage(),
+                'error_details' => $e->getTraceAsString()
             ]);
         }
     }

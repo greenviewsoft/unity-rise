@@ -62,8 +62,6 @@ class InvestmentPlanController extends Controller
             'daily_profit_percentage' => $request->daily_profit_percentage,
             'total_profit_percentage' => $totalProfitPercentage,
             'duration_days' => $request->duration,
-            'commission_levels' => 4, // Default commission levels
-            'rank_requirement' => null, // No rank requirement by default
             'description' => $request->description,
             'status' => $request->status === 'active',
             'created_by' => Auth::id()

@@ -38,7 +38,7 @@ return [
     'total_assets'=> 'My total assets',
     'today_profit'=> "Today's Profits",
     'promo_bonus'=> 'Referral Income',
-    'acc_profit'=> 'Leader Rewards',
+    'acc_profit'=> 'Team Income',
 
     'deposit'=> 'Deposit',
     'withdraw'=> 'Withdraw',

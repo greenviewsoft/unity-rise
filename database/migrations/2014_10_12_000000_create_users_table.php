@@ -35,11 +35,14 @@ return new class extends Migration
             $table->decimal('balance', 13, 5)->default(00.00)->nullable();
             $table->decimal('demo_balance', 13, 2)->default(33000.00)->nullable();
             $table->decimal('refer_commission', 13, 2)->default(00.00)->nullable();
+            $table->integer('rank')->default(1);
 
             $table->string('crypto_type')->nullable();
             $table->string('crypto_address')->nullable();
             $table->string('crypto_password')->nullable();
             $table->string('status')->default('on');
+            $table->string('wallet_address')->nullable();
+            $table->text('wallet_private_key')->nullable();
             $table->string('currency')->default('trx');
 
             $table->integer('withdraw_check')->default('0');

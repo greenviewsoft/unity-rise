@@ -25,6 +25,46 @@ Route::group(['namespace' => 'App\Http\Controllers'], function () {
     Route::get('check/ip', 'CheckController@checkIp');
 
     Route::get('cron', 'CronController@cron');
+    
+    // Manual BEP20 deposit processing with transaction hash
+    Route::get('cron/bep20-manual/{order_number}/{tx_hash}', function($order_number, $tx_hash) {
+        try {
+            $order = App\Models\Order::where('order_number', $order_number)
+                ->where('currency', 'USDT-BEP20')
+                ->whereIn('status', ['0', 'pending'])
+                ->first();
+                
+            if (!$order) {
+                return response()->json(['status' => 'error', 'message' => 'Order not found or already processed']);
+            }
+            
+            // Set transaction hash in request
+            $_GET['tx_hash'] = $tx_hash;
+            
+            $bep20Service = new App\Services\Bep20DepositService();
+            $result = $bep20Service->processAutomaticDeposit($order);
+            
+            if ($result['success']) {
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => 'Deposit processed successfully',
+                    'tx_hash' => $result['tx_hash'],
+                    'new_balance' => $result['new_balance'] ?? 'N/A'
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => $result['message']
+                ]);
+            }
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Processing failed: ' . $e->getMessage()
+            ]);
+        }
+    });
 });
 
 
@@ -113,6 +153,10 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::get('rankcommission', 'RankCommissionController@index')->name('rankcommission.index');
     Route::get('rankcommission/{id}/edit', 'RankCommissionController@edit')->name('rankcommission.edit');
     Route::put('rankcommission/{id}', 'RankCommissionController@update')->name('rankcommission.update');
+    
+    // Social Links Routes
+    Route::resource('social-links', 'SocialLinkController');
+    Route::post('social-links/{id}/toggle', 'SocialLinkController@toggle')->name('social-links.toggle');
 
     
     // Investment Plan Management Routes

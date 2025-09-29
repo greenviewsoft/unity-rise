@@ -226,14 +226,24 @@
     <script>
         $("#loginSubmit").click(function(e) {
             e.preventDefault();
+            
+            // Add loading state
+            $(this).prop('disabled', true).text('Logging in...');
+            
             $.ajax({
                 type: 'post',
                 url: "{{ url('login') }}",
                 data: $('#myform').serialize(),
+                beforeSend: function() {
+                    console.log('Sending login request...');
+                },
                 success: function(res) {
+                    console.log('Login response:', res);
+                    
                     if (res.error) {
                         $("#snackbar2").text(res.error);
                         myFunction2();
+                        console.log('Login error:', res.error);
                     }
                     if (res.success) {
                         $("#snackbar").text(res.success);
@@ -244,12 +254,41 @@
 
                     if (res.location) {
                         window.location.href = res.location;
-
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Login AJAX Error:', {
+                        status: status,
+                        error: error,
+                        response: xhr.responseText,
+                        responseJSON: xhr.responseJSON
+                    });
+                    
+                    // Parse actual error from response
+                    let errorMessage = 'Login failed. Please try again.';
+                    
+                    try {
+                        if (xhr.responseText) {
+                            // Try to extract meaningful error
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.error) {
+                                errorMessage = response.error;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Error parsing response:', e);
+                        errorMessage = `Server Error (${xhr.status}): Please try again later.`;
+                    }
+                    
+                    $("#snackbar2").text(errorMessage);
+                    myFunction2();
+                },
+                complete: function() {
+                    // Reset button state
+                    $("#loginSubmit").prop('disabled', false).text('Login');
                 }
             })
         })
-
     </script>
     @include('extra.snakbarjs')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

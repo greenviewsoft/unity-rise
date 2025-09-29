@@ -142,63 +142,70 @@ class TransactionController extends Controller
 
 
     public function deposite(Request $request){
-
-
-        if($request->key != null || $request->from != null || $request->to != null){
-
+        $query = Deposite::query();
+        
+        // Search by key (order number or txid)
+        if ($request->filled('key')) {
             $key = $request->key;
-            $from = $request->from;
-            $to = $request->to;
-            $status = $request->status;
-
-            $query = Deposite::query();
-            if (isset($key))
-            {
-                $query->where(function($q) use ($key) {
-                    $q->orWhere('order_number', $key);
-                    $q->orWhere('txid', $key);
-                });
-            }
-            if (isset($from) && isset($to))
-            {
-                $query->where(function($q) use ($from, $to) {
-                    $q->WhereBetween('created_at', [$from, $to]);
-                });
-            }
-            $deposites = $query->paginate(15);
-        }else{
-            $deposites = Deposite::orderBy('id', 'desc')
-            ->paginate(15);
+            $query->where(function($q) use ($key) {
+                $q->where('order_number', 'like', "%{$key}%")
+                  ->orWhere('txid', 'like', "%{$key}%");
+            });
         }
         
-
+        // Filter by date range
+        if ($request->filled('from') && $request->filled('to')) {
+            $query->whereBetween('created_at', [
+                $request->from . ' 00:00:00',
+                $request->to . ' 23:59:59'
+            ]);
+        } elseif ($request->filled('from')) {
+            $query->where('created_at', '>=', $request->from . ' 00:00:00');
+        } elseif ($request->filled('to')) {
+            $query->where('created_at', '<=', $request->to . ' 23:59:59');
+        }
+        
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Filter by currency
+        if ($request->filled('currency')) {
+            $query->where('currency', $request->currency);
+        }
+        
+        $deposites = $query->orderBy('id', 'desc')->paginate(15);
+        
         return view('admin.transaction.deposite', compact('deposites'));
     }
 
     public function addDeposite(){
         return view('admin.transaction.add_deposite');
     }
+    
+public function depositeStore(Request $request){
+    $this->validate($request, [
+        'phone' => 'required',
+        'amount' => 'required',
+    ]);
 
-    public function depositeStore(Request $request){
-        $this->validate($request, [
-            'phone' => 'required',
-            'amount' => 'required',
-        ]);
+    $user = User::where('phone', $request->phone)->first();
 
-        $user = User::where('phone', $request->phone)
-        ->first();
+    if(!isset($user)){
+        return redirect()->back()->with('error', 'This account not found');
+    }
 
-        if(!isset($user)){
-            return redirect()->back()->with('error', 'This account not found');
-        }
+    // Generate unique order number
+    $orderNumber = 'DEP' . date('Ymd') . rand(1000, 9999);
 
-        $deposite = new Deposite();
-        $deposite->user_id = $user->id;
-        $deposite->amount = $request->amount;
-        $deposite->txid = 'demo';
-        $deposite->status = '1';
-        $deposite->save();
-        
+    $deposite = new Deposite();
+    $deposite->user_id = $user->id;
+    $deposite->amount = $request->amount;
+    $deposite->txid = 'demo';
+    $deposite->order_number = $orderNumber; // Add this line
+    $deposite->status = '1';
+    $deposite->save();
         // Update user balance and create transaction log
         $previousBalance = $user->balance;
         $user->increment('balance', $request->amount);
@@ -218,7 +225,8 @@ class TransactionController extends Controller
                 'phone' => $user->phone,
                 'txid' => 'demo',
                 'payment_method' => 'manual_admin',
-                'admin_action' => true
+                'admin_action' => true,
+                 'currency' => 'USDT'
             ]
         );
 
@@ -228,33 +236,64 @@ class TransactionController extends Controller
 
     public function depositDetails($id){
         $deposite = Deposite::find($id);
-        $order = Order::where('order_number', $deposite->order_number)
-        ->first();
-        $addresstrx = Addresstrx::where('id', $order->txid)
-        ->first();
-        $user = User::find($deposite->user_id);
+        
+        if (!$deposite) {
+            return redirect()->back()->with('error', 'Deposit not found');
+        }
+        
+        $order = null;
+        $addresstrx = null;
+        $user = null;
+        
+        // Get order if exists
+        if ($deposite->order_number) {
+            $order = Order::where('order_number', $deposite->order_number)->first();
+            
+            // Get address if order exists and has txid
+            if ($order && $order->txid) {
+                $addresstrx = Addresstrx::where('id', $order->txid)->first();
+            }
+        }
+        
+        // Get user if exists
+        if ($deposite->user_id) {
+            $user = User::find($deposite->user_id);
+        }
 
         return view('admin.transaction.deposit_details', compact('deposite', 'order', 'addresstrx', 'user'));
     }
 
     public function depositDelete($id){
-
         $deposite = Deposite::find($id);
-        $order = Order::where('order_number', $deposite->order_number)
-        ->first();
-        $addresstrx = Addresstrx::where('id', $order->txid)
-        ->first();
+        
+        if (!$deposite) {
+            return redirect()->back()->with('error', 'Deposit not found');
+        }
+        
+        $order = null;
+        $addresstrx = null;
+        
+        // Get order if exists
+        if ($deposite->order_number) {
+            $order = Order::where('order_number', $deposite->order_number)->first();
+            
+            // Get address if order exists and has txid
+            if ($order && $order->txid) {
+                $addresstrx = Addresstrx::where('id', $order->txid)->first();
+            }
+        }
 
-        if(isset($deposite)){
-            $deposite->delete();
-        }
-        if(isset($order)){
-            $order->delete();
-        }
-        if(isset($addresstrx)){
+        // Delete in reverse order to avoid foreign key constraints
+        if ($addresstrx) {
             $addresstrx->delete();
         }
+        if ($order) {
+            $order->delete();
+        }
+        if ($deposite) {
+            $deposite->delete();
+        }
 
-        return redirect()->back()->with('success', 'Deleted successfully');
+        return redirect()->back()->with('success', 'Deposit deleted successfully');
     }
 }

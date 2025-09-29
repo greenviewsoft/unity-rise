@@ -468,6 +468,94 @@ body {
 }
 
 
+
+/* ---------- CMC-mini ---------- */
+.cmc-mini{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.cmc-mini::-webkit-scrollbar{height:0}
+.cmc-card{flex:0 0 140px;background:rgba(26,26,46,.8);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#fff;font-size:13px}
+.cmc-card.up{border-color:#10b981}
+.cmc-card.down{border-color:#ef4444}
+.cmc-symbol{font-weight:600;display:flex;align-items:center;gap:4px}
+.cmc-price{font-size:15px;font-weight:700;margin:4px 0}
+.cmc-chg{font-size:12px}
+.cmc-chg.up{color:#10b981}
+.cmc-chg.down{color:#ef4444}
+.cmc-card .d-flex{gap:10px}
+.cmc-card img[src*="/sparklines/"]{border-radius:4px;background:rgba(255,255,255,.05)}
+/* sparkline dark-mode + crisp */
+.cmc-card img[src*="/sparklines/"]{
+  background: rgba(255,255,255,.03);
+  border-radius: 4px;
+  image-rendering: -webkit-optimize-contrast; /* chrome */
+  image-rendering: crisp-edges;              /* firefox */
+  filter: brightness(1.15) contrast(1.2);    /* pop the line */
+}
+
+/* skeleton shimmer while loading */
+#cmc-mini:empty{
+  display:flex;gap:8px;
+}
+#cmc-mini:empty::after{
+  content:"";
+  flex:0 0 140px;height:70px;
+  background:linear-gradient(90deg,rgba(99,102,241,.1) 40%,rgba(139,92,246,.2) 50%,rgba(99,102,241,.1) 60%);
+  background-size:200% 100%;
+  animation:shimmer 1.2s infinite;
+  border-radius:12px;
+}
+@keyframes shimmer{to{background-position:-200% 0}}
+
+/* ===== Customer Support Styles ===== */
+.support-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.support-link:hover {
+    text-decoration: none;
+    color: inherit;
+    transform: translateY(-2px);
+}
+
+.support-card {
+    background: rgba(26,26,46,0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.support-card:hover {
+    background: rgba(26,26,46,0.9);
+    border-color: rgba(99,102,241,0.4);
+    box-shadow: 0 8px 32px rgba(99,102,241,0.1);
+}
+
+.support-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    transition: transform 0.3s ease;
+}
+
+.support-link:hover .support-icon {
+    transform: scale(1.1);
+}
+
+.support-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+}
 </style>
 @endsection
 @section('content')
@@ -590,6 +678,13 @@ body {
 
 </br>
 
+
+<!-- CoinMarketCap-mini -->
+<div class="container mb-3">
+  <h6 class="text-white-50 mb-2">Live Market Trade</h6>
+  <div id="cmc-mini" class="cmc-mini"></div>
+</div>
+
 <!-- Team Statistics Section -->
 <div class="card card-style bg-dark text-white shadow-lg mb-4">
    <div class="content">
@@ -651,7 +746,7 @@ body {
          </div>
          <div class="col-6 col-md-3">
             <div class="text-center p-2 bg-info bg-opacity-10 rounded">
-               <h6 class="text-white mb-1 small">Total DB</h6>
+               <h6 class="text-white mb-1 small">Total TB</h6>
                <span class="text-info fw-bold small">${{ number_format($total_downline_business, 2) }}</span>
             </div>
          </div>
@@ -955,6 +1050,45 @@ body {
          </div>
       </div>
    </div>
+   
+   <!-- Customer Support Section -->
+   <div class="card card-style">
+      <div class="content">
+         <h4 class="mb-3">
+            <i class="fas fa-headset me-2 text-primary"></i>Customer Support
+         </h4>
+         <p class="text-muted mb-4">Need help? Contact our support team through any of these channels:</p>
+         
+         <div class="row">
+            @php
+               $socialLinks = \App\Models\SocialLink::getActiveLinks();
+            @endphp
+            
+            @if($socialLinks->count() > 0)
+               @foreach($socialLinks as $link)
+                  <div class="col-6 col-md-4 col-lg-3 mb-3">
+                     <a href="{{ $link->url }}" target="_blank" class="support-link">
+                        <div class="support-card">
+                           <div class="support-icon" style="color: {{ $link->color }};">
+                              <i class="{{ $link->icon }}"></i>
+                           </div>
+                           <div class="support-name">{{ $link->name }}</div>
+                        </div>
+                     </a>
+                  </div>
+               @endforeach
+            @else
+               <div class="col-12">
+                  <div class="text-center py-4">
+                     <i class="fas fa-headset fa-3x text-muted mb-3"></i>
+                     <p class="text-muted">Support channels will be available soon</p>
+                  </div>
+               </div>
+            @endif
+         </div>
+      </div>
+   </div>
+   
    <div class="gap-tool"></div>
 </div>
 
@@ -1035,5 +1169,60 @@ $(document).ready(function() {
        });
    
    });
+
+
+/* ---------- CMC-mini (icon + sparkline) ---------- */
+(async()=>{
+  const list = [                       // id, name, CMC coin-id
+    {id:'bitcoin',       name:'BTC',  cmc:'1'},
+    {id:'tether',        name:'USDT', cmc:'825'} ,
+    {id:'ethereum',      name:'ETH',  cmc:'1027'},
+    {id:'binancecoin',   name:'BNB',  cmc:'1839'},
+    {id:'solana',        name:'SOL',  cmc:'5426'},
+    
+  ];
+  const ids = list.map(i=>i.id).join(',');
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const box = document.getElementById('cmc-mini');
+  box.innerHTML = '';          // clear old
+
+  list.forEach(item=>{
+    const p = data[item.id].usd;
+    const c = data[item.id].usd_24h_change || 0;
+    const up = c >= 0;
+    const iconSrc = `https://s2.coinmarketcap.com/static/img/coins/64x64/${item.cmc}.png`;
+    const sparkSrc = `https://s3.coinmarketcap.com/generated/sparklines/web/7d/2781/${item.cmc}.svg`;
+
+    box.insertAdjacentHTML('beforeend', `
+      <div class="cmc-card ${up?'up':'down'}">
+        <div class="d-flex align-items-center justify-content-between">
+          <!-- left: icon + name + price -->
+          <div>
+            <div class="cmc-symbol">
+              <img src="${iconSrc}" width="20" height="20">
+              <span>${item.name}</span>
+            </div>
+            <div class="cmc-price">$${p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div class="cmc-chg ${up?'up':'down'}">
+              ${up?'▲':'▼'} ${Math.abs(c).toFixed(2)}%
+            </div>
+          </div>
+          <!-- right: 7d sparkline -->
+          <img src="${sparkSrc}" width="60" height="30" alt="sparkline" style="opacity:.8">
+        </div>
+      </div>`);
+  });
+})();
+
+
+let reloadLock = false;
+setInterval(() => {
+  if (!reloadLock) {
+    reloadLock = true;
+    location.reload();
+  }
+}, 20000);
 </script>
 @endsection

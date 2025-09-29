@@ -151,16 +151,16 @@
                     @endforeach
                 </div>
 
-                <!-- Detailed Commission Table -->
+                <!-- All Commission Levels Table -->
                 <div class="card rank-card mt-5">
                     <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <div class="row align-items-center">
                             <div class="col">
                                 <h4 class="card-title mb-0">
                                     <i class="fas fa-table me-2"></i>
-                                    Detailed Commission Structure
+                                    All Commission Levels
                                 </h4>
-                                <p class="mb-0 opacity-75">Comprehensive breakdown of all commission levels</p>
+                                <p class="mb-0 opacity-75">Complete list of all commission levels with individual edit access</p>
                             </div>
                             <div class="col-auto">
                                 <i class="fas fa-chart-bar fa-2x opacity-50"></i>
@@ -172,113 +172,84 @@
                             <table class="table table-hover mb-0 table-modern">
                                 <thead style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
                                     <tr>
-                                        <th class="fw-bold text-primary"><i class="fas fa-hashtag me-1"></i>Rank</th>
-                                        <th class="fw-bold text-primary"><i class="fas fa-crown me-1"></i>Rank Name</th>
-                                        <th class="fw-bold text-primary"><i class="fas fa-layer-group me-1"></i>Total Levels</th>
-                                        <th class="fw-bold text-primary"><i class="fas fa-percentage me-1"></i>Commission Range</th>
+                                        <th class="fw-bold text-primary"><i class="fas fa-hashtag me-1"></i>ID</th>
+                                        <th class="fw-bold text-primary"><i class="fas fa-crown me-1"></i>Rank</th>
+                                        <th class="fw-bold text-primary"><i class="fas fa-layer-group me-1"></i>Level</th>
+                                        <th class="fw-bold text-primary"><i class="fas fa-percentage me-1"></i>Commission Rate</th>
+                                        <th class="fw-bold text-primary"><i class="fas fa-dollar-sign me-1"></i>Rank Reward</th>
+                                        <th class="fw-bold text-primary"><i class="fas fa-toggle-on me-1"></i>Status</th>
                                         <th class="fw-bold text-primary"><i class="fas fa-cogs me-1"></i>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($rankCommissionData as $rank => $data)
-                                        <tr class="align-middle">
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
-                                                        <span class="text-white fw-bold">{{ $rank }}</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <i class="fas fa-crown text-warning me-2"></i>
-                                                    <strong class="text-dark">{{ $data['rank_name'] }}</strong>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge badge-modern bg-info text-white">
-                                                    <i class="fas fa-layer-group me-1"></i>
-                                                    {{ $data['total_levels'] }} Levels
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <span class="badge bg-success me-1">{{ number_format($data['max_rate'], 1) }}%</span>
-                                                    <i class="fas fa-arrow-right text-muted mx-2"></i>
-                                                    <span class="badge bg-warning">{{ number_format($data['min_rate'], 1) }}%</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    <button class="btn btn-sm btn-outline-primary" 
-                                                            type="button" 
-                                                            data-bs-toggle="collapse" 
-                                                            data-bs-target="#rank{{ $rank }}Details" 
-                                                            aria-expanded="false"
-                                                            title="View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <a href="{{ route('admin.rankcommission.edit', $rank) }}" 
-                                                       class="btn btn-sm btn-outline-success"
-                                                       title="Edit Rank">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="5" class="p-0">
-                                                <div class="collapse" id="rank{{ $rank }}Details">
-                                                    <div class="bg-light p-4">
-                                                        <div class="row align-items-center mb-3">
-                                                            <div class="col">
-                                                                <h5 class="text-primary mb-0">
-                                                                    <i class="fas fa-layer-group me-2"></i>
-                                                                    Rank {{ $rank }} ({{ $data['rank_name'] }}) - Level Details
-                                                                </h5>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <span class="badge bg-primary badge-modern">
-                                                                    {{ count($data['levels']) }} Levels Total
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <div class="row">
-                                                            @foreach($data['levels'] as $level)
-                                                                <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
-                                                                    <div class="card level-card h-100">
-                                                                        <div class="card-body text-center p-3">
-                                                                            <div class="mb-2">
-                                                                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px;">
-                                                                                    <span class="text-white fw-bold">{{ $level->level }}</span>
-                                                                                </div>
-                                                                                <small class="text-muted">Level {{ $level->level }}</small>
-                                                                            </div>
-                                                                            <h5 class="text-primary fw-bold mb-3">{{ number_format($level->commission_rate, 2) }}%</h5>
-                                                                            <div class="mb-2">
-                                                                                <small class="text-muted d-block">Reward</small>
-                                                                                <span class="badge bg-success">${{ number_format($level->rank_reward, 2) }}</span>
-                                                                            </div>
-                                                                            <div class="mb-3">
-                                                                                <span class="badge {{ $level->is_active ? 'bg-success' : 'bg-secondary' }} badge-modern">
-                                                                                    <i class="fas {{ $level->is_active ? 'fa-check-circle' : 'fa-times-circle' }} me-1"></i>
-                                                                                    {{ $level->is_active ? 'Active' : 'Inactive' }}
-                                                                                </span>
-                                                                            </div>
-                                                                            <a href="{{ route('admin.rankcommission.edit', $level->id) }}" 
-                                                                               class="btn btn-sm btn-outline-primary w-100" 
-                                                                               title="Edit Level {{ $level->level }}">
-                                                                                <i class="fas fa-edit me-1"></i> Edit
-                                                                            </a>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endforeach
+                                        @foreach($data['levels'] as $level)
+                                            <tr class="align-middle {{ $loop->first ? 'border-top border-3 border-primary' : '' }}">
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px;">
+                                                            <span class="text-white fw-bold small">{{ $level->id }}</span>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                                                            <span class="text-white fw-bold">{{ $rank }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-bold text-dark">{{ $data['rank_name'] }}</div>
+                                                            <small class="text-muted">Rank {{ $rank }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-info rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px;">
+                                                            <span class="text-white fw-bold">{{ $level->level }}</span>
+                                                        </div>
+                                                        <span class="fw-bold">Level {{ $level->level }}</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="badge {{ $level->commission_rate >= 10 ? 'bg-success' : ($level->commission_rate >= 5 ? 'bg-warning' : 'bg-info') }} badge-modern">
+                                                            <i class="fas fa-percentage me-1"></i>
+                                                            {{ number_format($level->commission_rate, 2) }}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="badge bg-success badge-modern">
+                                                            <i class="fas fa-dollar-sign me-1"></i>
+                                                            ${{ number_format($level->rank_reward, 2) }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge {{ $level->is_active ? 'bg-success' : 'bg-secondary' }} badge-modern">
+                                                        <i class="fas {{ $level->is_active ? 'fa-check-circle' : 'fa-times-circle' }} me-1"></i>
+                                                        {{ $level->is_active ? 'Active' : 'Inactive' }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="{{ route('admin.rankcommission.edit', $level->id) }}" 
+                                                           class="btn btn-sm btn-outline-primary"
+                                                           title="Edit Level {{ $level->level }}">
+                                                            <i class="fas fa-edit me-1"></i> Edit
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-info" 
+                                                                type="button" 
+                                                                data-bs-toggle="tooltip" 
+                                                                title="Level {{ $level->level }} - {{ $data['rank_name'] }}">
+                                                            <i class="fas fa-info"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
                                     @endforeach
                                 </tbody>
                             </table>

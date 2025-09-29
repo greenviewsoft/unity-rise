@@ -33,8 +33,8 @@ class RankReward extends Model
         parent::boot();
         
         static::creating(function ($model) {
-            // Auto-approve all rank rewards
-            $model->status = 'approved';
+            // Auto-process all rank rewards
+            $model->status = 'processed';
             $model->processed_at = now();
         });
         

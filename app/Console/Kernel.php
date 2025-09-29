@@ -15,15 +15,14 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('command:order')->everyMinute();
-        // $schedule->command('command:withdraw')->everyMinute(); // Disabled for local development
-       // $schedule->command('command:autoreceive')->everyMinute();
-        // $schedule->command('command:spin')->everyMinute(); // Disabled for local development
+        // BEP20 USDT Deposit Processing - Every 5 minutes
+        $schedule->command('deposits:process-bep20')->everyFiveMinutes();
         
         // Investment profit distribution (Monday to Friday at 9:00 AM)
         $schedule->command('investment:distribute-profit')->dailyAt('09:00')->weekdays();
         
-        // $schedule->command('inspire')->hourly();
+        // BEP20 deposit monitoring - Every hour
+        $schedule->command('monitor:bep20-deposits --notify-stuck')->hourly();
     }
 
     /**

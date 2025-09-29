@@ -2,207 +2,246 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\ReferralCommission;
-use App\Models\RankReward;
+use App\Models\ReferralCommissionLevel;
+use App\Models\RankRequirement;
+use App\Models\User;
 use App\Models\Investment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
+
 class ReferralCommissionService
 {
-    /**
-     * Calculate and distribute referral commissions for an investment
-     */
     public function distributeCommissions(Investment $investment)
     {
         $investor = $investment->user;
         $investmentAmount = $investment->amount;
         
-        if (!$investor->refer_id) {
-            return; // No referrer, no commission to distribute
-        }
-
-        DB::transaction(function () use ($investor, $investmentAmount) {
-            $this->processReferralChain($investor, $investmentAmount);
-        });
-    }
-
-    /**
-     * Process the referral chain and calculate commissions
-     */
-    private function processReferralChain(User $investor, $investmentAmount)
-    {
-        $currentUser = $investor;
-        $level = 1;
-        $maxLevels = 40; // Maximum levels to process
+        Log::info("Starting commission distribution for investment ID: {$investment->id}, Amount: {$investmentAmount}");
         
-        while ($currentUser->refer_id && $level <= $maxLevels) {
-            $referrer = User::find($currentUser->refer_id);
-            
-            if (!$referrer) {
-                break; // Referrer not found, stop processing
-            }
-
-            // Get commission rate based on referrer's rank and current level
-            $commissionRate = ReferralCommission::getCommissionRate($referrer->rank, $level);
-            
-            if ($commissionRate > 0) {
-                $commissionAmount = ($investmentAmount * $commissionRate) / 100;
-                
-                // Create commission record
-                ReferralCommission::create([
-                    'referrer_id' => $referrer->id,
-                    'referred_id' => $investor->id,
-                    'investment_amount' => $investmentAmount,
-                    'commission_amount' => $commissionAmount,
-                    'level' => $level,
-                    'rank' => $referrer->rank,
-                    'commission_date' => now()
-                ]);
-                
-                // Capture previous balances for logging
-                $previousBalance = $referrer->balance;
-                $previousReferCommission = $referrer->refer_commission;
-                
-                // Add commission to both refer_commission and main balance
-                $referrer->increment('refer_commission', $commissionAmount);
-                $referrer->increment('balance', $commissionAmount);
-                
-                // Get new balances for logging
-                $referrer->refresh();
-                $newBalance = $referrer->balance;
-                $newReferCommission = $referrer->refer_commission;
-                
-                // Create transaction log
-                $referrer->createTransactionLog([
-                    'type' => 'referral_commission',
-                    'amount' => $commissionAmount,
-                    'previous_balance' => $previousBalance,
-                    'new_balance' => $newBalance,
-                    'metadata' => [
-                        'investor_id' => $investor->id,
-                        'investor_name' => $investor->name,
-                        'investment_amount' => $investmentAmount,
-                        'commission_level' => $level,
-                        'commission_rate' => $commissionRate,
-                        'referrer_rank' => $referrer->rank,
-                        'previous_refer_commission' => $previousReferCommission,
-                        'new_refer_commission' => $newReferCommission
-                    ]
-                ]);
-                
-                Log::info("Commission distributed", [
-                    'referrer_id' => $referrer->id,
-                    'investor_id' => $investor->id,
-                    'level' => $level,
-                    'rate' => $commissionRate,
-                    'amount' => $commissionAmount
-                ]);
-            }
-            
-            // Move to next level
-            $currentUser = $referrer;
-            $level++;
+        // Check if investor was referred by someone
+        if (!$investor->refer_id) {
+            Log::info('No referrer found - refer_id is null for user: ' . $investor->id);
+            return;
         }
-    }
-
-    /**
-     * Process rank reward when user achieves new rank
-     */
-    public function processRankReward(User $user, $oldRank, $newRank)
-    {
+        
         try {
             DB::beginTransaction();
             
-            $rewardAmount = RankReward::getRewardForRank($newRank);
+            // Start from level 1 and go up the referral chain
+            $currentUser = $investor;
+            $level = 1;
             
-            if ($rewardAmount > 0) {
-                // Create rank reward record (auto-approved and processed)
-                $rankReward = RankReward::create([
-                    'user_id' => $user->id,
-                    'old_rank' => $oldRank,
-                    'new_rank' => $newRank,
-                    'reward_amount' => $rewardAmount,
-                    'reward_type' => 'rank_achievement'
-                    // status, processed_at, balance update, and logging handled automatically in boot method
-                ]);
+            while ($currentUser->refer_id && $level <= 40) { // Max 40 levels as per your data
+                $referrer = User::find($currentUser->refer_id);
                 
-                Log::info("Rank reward auto-processed for user {$user->id}: {$rewardAmount} for achieving rank {$newRank}");
+                if (!$referrer) {
+                    Log::info("Referrer not found with ID: {$currentUser->refer_id} at level {$level}");
+                    break;
+                }
+                
+                // Get referrer's current rank
+                $referrerRank = $this->getUserRank($referrer);
+                
+                // Get commission rate for this level and rank
+                $commissionData = $this->getCommissionRate($referrerRank, $level);
+                
+                if ($commissionData && $commissionData->commission_rate > 0) {
+                    $commissionAmount = ($investmentAmount * $commissionData->commission_rate) / 100;
+                    
+                    // Create commission record
+                    $this->createCommissionRecord($referrer, $investor, $investment, $commissionAmount, $level, $commissionData);
+                    
+                    Log::info("Level {$level} commission created for user {$referrer->id}, Amount: {$commissionAmount}");
+                } else {
+                    Log::info("No commission rate found for rank {$referrerRank} at level {$level}");
+                }
+                
+                // Move to next level
+                $currentUser = $referrer;
+                $level++;
             }
             
             DB::commit();
+            Log::info("Commission distribution completed for investment ID: {$investment->id}");
             
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error("Error processing rank reward: " . $e->getMessage());
-            throw $e;
+            Log::error('Commission distribution failed: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
         }
     }
-
+    
     /**
-     * Get referral statistics for a user
+     * Get user's current rank based on requirements
      */
-    public function getReferralStats(User $user)
+    private function getUserRank($user)
     {
-        $directReferrals = $user->referrals()->count();
-        $totalCommissions = $user->referralCommissions()->sum('commission_amount');
-        $todayCommissions = $user->referralCommissions()->today()->sum('commission_amount');
-        $thisMonthCommissions = $user->referralCommissions()
-            ->whereMonth('commission_date', now()->month)
-            ->whereYear('commission_date', now()->year)
-            ->sum('commission_amount');
-        
-        return [
-            'direct_referrals' => $directReferrals,
-            'total_commissions' => $totalCommissions,
-            'today_commissions' => $todayCommissions,
-            'this_month_commissions' => $thisMonthCommissions,
-            'commission_levels' => $this->getCommissionLevels($user->rank)
-        ];
+        // Use existing rank field from users table
+        return $user->rank ?? 1;
     }
-
+    
     /**
-     * Get commission levels for a rank
+     * Get commission rate for specific rank and level
      */
-    private function getCommissionLevels($rank)
+    private function getCommissionRate($rankId, $level)
     {
-        $levels = [];
-        $maxLevel = $this->getMaxLevelForRank($rank);
+        return ReferralCommissionLevel::where('rank_id', $rankId)
+            ->where('level', $level)
+            ->where('is_active', 1)
+            ->first();
+    }
+    
+    /**
+     * Create commission record and update balances
+     */
+    private function createCommissionRecord($referrer, $investor, $investment, $commissionAmount, $level, $commissionData)
+    {
+        // Create commission record
+        $commission = ReferralCommission::create([
+            'referrer_id' => $referrer->id,
+            'referred_id' => $investor->id,
+            'investment_amount' => $investment->amount,
+            'commission_amount' => $commissionAmount,
+            'commission_rate' => $commissionData->commission_rate,
+            'level' => $level,
+            'rank' => $commissionData->rank_id, // Use rank_id instead of rank_name
+            'rank_id' => $commissionData->rank_id,
+            'commission_date' => now(),
+            'status' => 'approved' // Auto approved
+        ]);
         
-        for ($level = 1; $level <= $maxLevel; $level++) {
-            $rate = ReferralCommission::getCommissionRate($rank, $level);
-            if ($rate > 0) {
-                $levels[] = [
-                    'level' => $level,
-                    'rate' => $rate
-                ];
+        // Add commission to referrer's refer_commission field
+        $referrer->increment('refer_commission', $commissionAmount);
+        
+        // Add commission to referrer's balance field
+        $referrer->increment('balance', $commissionAmount);
+        
+        // Update referrer's total earnings (if this field exists)
+        if (Schema::hasColumn('users', 'total_referral_earnings')) {
+            $referrer->increment('total_referral_earnings', $commissionAmount);
+        }
+        
+        return $commission;
+    }
+    
+    /**
+     * Check and update user rank based on requirements
+     */
+    public function checkAndUpdateUserRank($userId)
+    {
+        $user = User::find($userId);
+        if (!$user) return;
+        
+        // Get all rank requirements ordered by rank
+        $rankRequirements = RankRequirement::orderBy('rank_id')->get();
+        
+        $userStats = $this->getUserStats($userId);
+        
+        foreach ($rankRequirements as $requirement) {
+            if ($this->meetsRankRequirement($userStats, $requirement)) {
+                if ($user->rank < $requirement->rank_id) {
+                    $user->update(['rank' => $requirement->rank_id]);
+                    
+                    // Give rank reward
+                    $rankData = ReferralCommissionLevel::where('rank_id', $requirement->rank_id)->first();
+                    if ($rankData && $rankData->rank_reward > 0) {
+                        $user->increment('refer_commission', $rankData->rank_reward);
+                        Log::info("Rank reward given to user {$userId}: {$rankData->rank_reward}");
+                    }
+                }
             }
         }
-        
-        return $levels;
     }
-
+    
     /**
-     * Get maximum level for a rank
+     * Get user statistics for rank calculation
      */
-    private function getMaxLevelForRank($rank)
+    private function getUserStats($userId)
     {
-        $maxLevels = [
-            1 => 5,   // Bronze
-            2 => 6,   // Bronze+
-            3 => 7,   // Silver
-            4 => 8,   // Silver+
-            5 => 9,   // Gold
-            6 => 10,  // Gold+
-            7 => 15,  // Platinum
-            8 => 16,  // Platinum+
-            9 => 20,  // Diamond
-            10 => 25, // Diamond+
-            11 => 30, // Master
-            12 => 40  // Grand Master
+        return [
+            'total_referrals' => User::where('refer_id', $userId)->count(),
+            'active_referrals' => User::where('refer_id', $userId)
+                ->whereHas('investments', function($q) {
+                    $q->where('status', 'active');
+                })->count(),
+            'total_team_investment' => $this->getTeamInvestment($userId),
+            'total_commissions' => ReferralCommission::where('referrer_id', $userId)->sum('commission_amount'),
+            'monthly_volume' => $this->getMonthlyVolume($userId)
         ];
+    }
+    
+    /**
+     * Check if user meets rank requirement
+     */
+    private function meetsRankRequirement($userStats, $requirement)
+    {
+        // Implement your rank requirement logic here
+        // This depends on your rank_requirements table structure
+        return true; // Placeholder - implement based on your requirements
+    }
+    
+    /**
+     * Get team investment total
+     */
+    private function getTeamInvestment($userId, $level = 1, $maxLevel = 40)
+    {
+        if ($level > $maxLevel) return 0;
         
-        return $maxLevels[$rank] ?? 5;
+        $directReferrals = User::where('refer_id', $userId)->get();
+        $totalInvestment = 0;
+        
+        foreach ($directReferrals as $referral) {
+            $totalInvestment += $referral->investments()->sum('amount');
+            $totalInvestment += $this->getTeamInvestment($referral->id, $level + 1, $maxLevel);
+        }
+        
+        return $totalInvestment;
+    }
+    
+    /**
+     * Get monthly volume
+     */
+    private function getMonthlyVolume($userId)
+    {
+        return ReferralCommission::where('referrer_id', $userId)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('commission_amount');
+    }
+    
+    /**
+     * Get referral statistics
+     */
+    public function getReferralStats($userId)
+    {
+        $user = User::find($userId);
+        $currentRank = ReferralCommissionLevel::where('rank_id', $user->rank ?? 1)->first();
+        
+        return [
+            'total_referrals' => User::where('refer_id', $userId)->count(),
+            'active_referrals' => User::where('refer_id', $userId)
+                ->whereHas('investments', function($q) {
+                    $q->where('status', 'active');
+                })->count(),
+            'total_commissions' => ReferralCommission::where('referrer_id', $userId)
+                ->where('status', 'approved')
+                ->sum('commission_amount'),
+            'this_month_commissions' => ReferralCommission::where('referrer_id', $userId)
+                ->where('status', 'approved')
+                ->thisMonth()
+                ->sum('commission_amount'),
+            'today_commissions' => ReferralCommission::where('referrer_id', $userId)
+                ->where('status', 'approved')
+                ->today()
+                ->sum('commission_amount'),
+            'current_rank' => $currentRank ? $currentRank->rank_name : 'Rookie',
+            'team_investment' => $this->getTeamInvestment($userId),
+            'total_investment_volume' => ReferralCommission::where('referrer_id', $userId)->sum('investment_amount'),
+            'pending_commissions' => ReferralCommission::where('referrer_id', $userId)
+                ->where('status', 'pending')
+                ->sum('commission_amount')
+        ];
     }
 }

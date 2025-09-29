@@ -38,6 +38,12 @@
             Rank Commission
         </a>
 
+        <!-- Social Links -->
+        <a class="nav-link {{ Request::is('admin/social-links*') ? 'active' : '' }}" href="{{url('admin/social-links')}}">
+            <div class="sb-nav-link-icon"><i class="fas fa-share-alt"></i></div>
+            Social Links
+        </a>
+
 
                 <a class="nav-link {{ Request::is('admin/announcement*') ? 'active' : '' }}" href="{{ url('admin/announcement') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-bell"></i></div>

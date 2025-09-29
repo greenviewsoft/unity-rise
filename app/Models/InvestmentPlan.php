@@ -18,8 +18,6 @@ class InvestmentPlan extends Model
         'duration_days',
         'status',
         'description',
-        'commission_levels',
-        'rank_requirement',
         'created_by'
     ];
 
@@ -28,10 +26,9 @@ class InvestmentPlan extends Model
         'max_amount' => 'decimal:2',
         'daily_profit_percentage' => 'decimal:2',
         'total_profit_percentage' => 'decimal:2',
-        'duration_days' => 'integer',
         'status' => 'boolean',
-        'commission_levels' => 'integer',
-        'rank_requirement' => 'integer'
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -122,15 +119,5 @@ class InvestmentPlan extends Model
         return $amount >= $this->min_amount && $amount <= $this->max_amount;
     }
 
-    /**
-     * Check if user meets rank requirement
-     */
-    public function userMeetsRankRequirement($user)
-    {
-        if (!$this->rank_requirement) {
-            return true;
-        }
-        
-        return $user->rank >= $this->rank_requirement;
-    }
+
 }

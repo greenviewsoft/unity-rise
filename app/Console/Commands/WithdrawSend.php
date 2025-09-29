@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Apikey;
 use Illuminate\Console\Command;
-use App\Models\Commission;
+use App\Models\ReferralCommissionLevel;
 use App\Models\Deposite;
 use App\Models\Info;
 use App\Models\Settingtrx;

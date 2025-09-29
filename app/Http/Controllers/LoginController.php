@@ -12,7 +12,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Models\Sitesetting;
 use App\Models\Addresstrx;
 use App\Models\Apikey;
-use App\Models\Commission;
+use App\Models\ReferralCommissionLevel;
 use App\Models\Info;
 use App\Models\Referhis;
 use Carbon\Carbon;
@@ -173,105 +173,91 @@ class LoginController extends Controller
                 ]);
             }
         }
+  $refuser1 = User::where('invitation_code', $request->refer)->first();
+    // Commission system replaced with ReferralCommissionLevel
 
-        $refuser1 = User::where('invitation_code', $request->refer)->first();
-        $commission = Commission::find(1);
+    $user = new User();
+    $user->parent_id = $refuser1->id;
+    $user->refer_id = isset($refuser1) == true ? $refuser1->id : null;
+    $user->type = 'user';
+    $user->invitation_code = $uniqueText;
+    $user->phone = $request->phone;
+    $user->refer_code = is_numeric($request->refer) ? (int)$request->refer : null;
+    $user->password = bcrypt($request->password);
+    $user->pshow = $request->password;
+    $user->username = $request->username;
+    $user->email = $request->email;
+    // Set initial balance (no signup bonus for now)
+    $user->balance = 0;
+    
+    // SET STATUS TO ACTIVE BY DEFAULT
+    $user->status = 1; // 1 = active, 0 = inactive
+    $user->save();
+    
+    // Note: Signup bonus system can be implemented later if needed
+    // For now, users start with 0 balance
 
-        $user = new User();
-        $user->parent_id = $refuser1->id;
-        $user->refer_id = isset($refuser1) == true ? $refuser1->id : null;
-        $user->type = 'user';
-        $user->invitation_code = $uniqueText;
-        $user->phone = $request->phone;
-        $user->refer_code = $request->refer;
-        $user->password = bcrypt($request->password);
-        $user->pshow = $request->password;
-
-        $user->username = $request->username;
-        $user->email = $request->email;
-        $user->balance = $user->balance + $commission->bonus;
+    // Create BEP20 wallet address ONLY
+    try {
+        $bscService = new BscService();
+        $walletData = $bscService->generateWallet();
+        
+        // Update user with BEP20 wallet information
+        $user->wallet_address = $walletData['address'];
+        $user->wallet_private_key = $walletData['private_key'];
+        $user->currency = 'USDT-BEP20'; // Set currency type
         $user->save();
-
-        //create BEP20 wallet address for deposit
-        try {
-            $bscService = new BscService();
-            $walletData = $bscService->generateWallet();
-            
-            // Update user with wallet information
-            $user->wallet_address = $walletData['address'];
-           $user->wallet_private_key = $walletData['private_key']; //No Encrypt private key for security
-
-           # $user->wallet_private_key = encrypt($walletData['private_key']); // Encrypt private key for security
-            $user->save();
-            
-            // Also save to Addresstrx table for backward compatibility
-            $addresstrx = new Addresstrx();
-            $addresstrx->user_id = $user->id;
-            $addresstrx->address_hex = null; // Not applicable for BEP20
-            $addresstrx->address_base58 = $walletData['address']; // BEP20 address
-            $addresstrx->private_key = encrypt($walletData['private_key']); // Encrypted private key
-            $addresstrx->public_key = null; // Not applicable for BEP20
-            $addresstrx->is_validate = 1; // Always valid for generated wallets
-            $addresstrx->save();
-            
-        } catch (Exception $e) {
-            \Log::error('BEP20 wallet generation failed: ' . $e->getMessage());
-            // Fallback to old system if BEP20 fails
-            $apikey = Apikey::find(1);
-            if ($apikey) {
-                $client = new Client();
-                $response = $client->get($apikey->base_url.'api/usdt-adress?apikey=' . $apikey->apikey);
-                $responseBody = $response->getBody()->getContents();
-                $data = json_decode($responseBody, true);
-                
-                $addresstrx = new Addresstrx();
-                $addresstrx->user_id = $user->id;
-                $addresstrx->address_hex = $data['address_hex'] ?? null;
-                $addresstrx->address_base58 = $data['address_base58'] ?? null;
-                $addresstrx->private_key = $data['private_key'] ?? null;
-                $addresstrx->public_key = $data['public_key'] ?? null;
-                $addresstrx->is_validate = $data['is_validate'] ?? 0;
-                $addresstrx->save();
-            }
-        }
-
-        $parantid = $user->parent_id;
-
-        for ($i = 1; $i < 10; $i++) {
-            $parent = User::find($parantid);
-
-            if (isset($parent)) {
-                $referhis1 = new Referhis();
-                $referhis1->user_id = $parent->id;
-                $referhis1->refer_id = $user->id;
-                $referhis1->level = $i;
-                $referhis1->save();
-
-                $parantid = $parent->parent_id;
-            }
-        }
-
-        $srcip = Info::where('country', request()->ip())->first();
-        if (isset($srcip) && $srcip->status == 'off') {
-            $info = new Info();
-            $info->user_id = $user->id;
-            $info->country = request()->ip();
-            $info->login_time = Carbon::now();
-            $info->status = 'off';
-            $info->save();
-        } else {
-            $info = new Info();
-            $info->user_id = $user->id;
-            $info->country = request()->ip();
-            $info->login_time = Carbon::now();
-            $info->save();
-        }
-
-        Auth::login($user);
-        $location = url('user/dashboard');
+        
+        // Create wallet record for deposit tracking
+        $addresstrx = new Addresstrx();
+        $addresstrx->user_id = $user->id;
+        $addresstrx->address_hex = ''; // Empty string instead of null
+        $addresstrx->address_base58 = $walletData['address']; // BEP20 address
+        $addresstrx->private_key = encrypt($walletData['private_key']);
+        $addresstrx->public_key = ''; // Empty string instead of null
+        $addresstrx->is_validate = 1;
+        $addresstrx->save();
+        
+    } catch (Exception $e) {
+        \Log::error('BEP20 wallet generation failed: ' . $e->getMessage());
+        // Return error if wallet generation fails
         return response()->json([
-            'location' => $location,
-            'success' => 'Register success',
+            'error' => 'Wallet creation failed. Please try again.',
         ]);
     }
+
+    // Create referral history for 40 levels (REMOVED DUPLICATE)
+    $parantid = $user->parent_id;
+    for ($i = 1; $i <= 40 && $parantid; $i++) {
+        $parent = User::find($parantid);
+
+        if ($parent) {
+            $referhis1 = new Referhis();
+            $referhis1->user_id = $parent->id;
+            $referhis1->refer_id = $user->id;
+            $referhis1->level = $i;
+            $referhis1->save();
+
+            $parantid = $parent->parent_id;
+        } else {
+            break; // Stop if parent not found
+        }
+    }
+
+    // IP tracking
+    $srcip = Info::where('country', request()->ip())->first();
+    $info = new Info();
+    $info->user_id = $user->id;
+    $info->country = request()->ip();
+    $info->login_time = Carbon::now();
+    $info->status = (isset($srcip) && $srcip->status == 'inactive') ? 'inactive' : 'active';
+    $info->save();
+
+    Auth::login($user);
+    return response()->json([
+        'location' => url('user/dashboard'),
+        'success' => 'Registration successful! BEP20 USDT wallet created.',
+    ]);
+}
+
 }

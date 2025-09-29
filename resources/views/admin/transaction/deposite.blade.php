@@ -48,29 +48,48 @@
 
                 <div class="card-body">
                     <form action="{{ url('admin/deposite') }}" method="get">
-                        @csrf
-                        <div class="form-row align-items-center">
-                            <div class="row">
-                                <div class="col-sm-4 my-1">
-                                    <label class="sr-only" for="key">Name</label>
-                                    <input type="text" class="form-control" name="key" placeholder="Search key">
-                                </div>
-                                <div class="col-sm-4 my-1">
-                                    <label class="sr-only" for="from">Name</label>
-                                    <input type="date" class="form-control" name="from" placeholder="From">
-                                </div>
-                                <div class="col-sm-3 my-1">
-                                    <label class="sr-only" for="to">Name</label>
-                                    <input type="date" class="form-control" name="to" placeholder="To">
-                                </div>
-
-
-                                <div class="col-auto my-1">
-                                    <button name="search" type="submit" class="btn-sm btn-primary">Search</button>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label for="key" class="form-label">Search</label>
+                                <input type="text" class="form-control" name="key" id="key" 
+                                       placeholder="Order number, TxID..." 
+                                       value="{{ request('key') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="from" class="form-label">From Date</label>
+                                <input type="date" class="form-control" name="from" id="from" 
+                                       value="{{ request('from') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="to" class="form-label">To Date</label>
+                                <input type="date" class="form-control" name="to" id="to" 
+                                       value="{{ request('to') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-control" name="status" id="status">
+                                    <option value="">All Status</option>
+                                    <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Pending</option>
+                                    <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Completed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="currency" class="form-label">Currency</label>
+                                <select class="form-control" name="currency" id="currency">
+                                    <option value="">All Currency</option>
+                                    <option value="USDT-BEP20" {{ request('currency') == 'USDT-BEP20' ? 'selected' : '' }}>USDT-BEP20</option>
+                                    <option value="USDT" {{ request('currency') == 'USDT' ? 'selected' : '' }}>USDT</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-
                     </form>
                     <br>
                     <div class="table-responsive">
@@ -78,56 +97,77 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Phone</th>
-                                    <th>Address</th>
+                                    <th>Order Number</th>
+                                    <th>User</th>
                                     <th>Amount</th>
-                                    <th>Trid</th>
+                                    <th>Currency</th>
+                                    <th>TxID</th>
                                     <th>Date</th>
                                     <th>Status</th>
-                                    <td>Action</td>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($deposites as $deposite)
                                     <tr>
-                                        <td>#{{ $deposite->order_number }}</td>
+                                        <td>{{ $deposite->id }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ $deposite->order_number }}</span>
+                                        </td>
                                         <td>
                                             @php
                                                 $user = App\Models\User::find($deposite->user_id);
                                             @endphp
-                                            @if (isset($user))
-                                                {{ $user->phone }}
+                                            @if ($user)
+                                                <div>
+                                                    <strong>{{ $user->username ?? 'N/A' }}</strong><br>
+                                                    <small class="text-muted">{{ $user->phone ?? 'N/A' }}</small>
+                                                </div>
+                                            @else
+                                                <span class="text-muted">User ID: {{ $deposite->user_id }}</span>
                                             @endif
                                         </td>
-                                        <td>TRX {{ $deposite->amount }}</td>
-                                        @php
-                                            $order = App\Models\Order::where('order_number', $deposite->order_number)->first();
-                                        @endphp
-                                        @if (isset($order))
-                                            @php
-                                                $addresstrx = App\Models\Addresstrx::where('id', $order->txid)->first();
-                                            @endphp
-                                            @if (isset($addresstrx))
-                                                <td>{{ $addresstrx->address_base58 }}</td>
-                                            @endif
-                                        @endif
-
-                                        <td>{{ $deposite->txid }}</td>
-                                        <td>{{ isset($deposite->created_at) ? $deposite->created_at->diffForHumans() : '' }}
-                                        </td>
-                                        @if (isset($order))
-                                            <td>{{ $order->autoreceive }}</td>
-                                        @endif
                                         <td>
-                                            <a href="{{ url('admin/deposit/details', $deposite->id) }}"
-                                                class="btn-sm btn-success">View</a>
-
+                                            <span class="badge bg-success">{{ number_format($deposite->amount, 2) }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ $deposite->currency }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="text-truncate" style="max-width: 150px;" title="{{ $deposite->txid }}">
+                                                {{ $deposite->txid }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <small>{{ $deposite->created_at->format('M d, Y') }}</small><br>
+                                                <small class="text-muted">{{ $deposite->created_at->format('h:i A') }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if($deposite->status == 1)
+                                                <span class="badge bg-success">Completed</span>
+                                            @elseif($deposite->status == 0)
+                                                <span class="badge bg-warning">Pending</span>
+                                            @else
+                                                <span class="badge bg-secondary">Unknown</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url('admin/deposit/details', $deposite->id) }}"
+                                                    class="btn btn-sm btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
                                                 <a href="{{ url('admin/deposit/delete', $deposite->id) }}"
-                                                    class="btn-sm btn-danger">Trash</a>
+                                                    class="btn btn-sm btn-outline-danger" title="Delete"
+                                                    onclick="return confirm('Are you sure you want to delete this deposit?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
-
                             </tbody>
                         </table>
 

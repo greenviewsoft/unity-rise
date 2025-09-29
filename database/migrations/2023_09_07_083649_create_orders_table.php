@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('order_number')->nullable();
             $table->string('amount')->nullable();
             $table->string('currency')->nullable();
+            $table->string('wallet_address')->nullable();
 
             $table->string('txid')->nullable();
             $table->string('conversion_rate')->nullable();

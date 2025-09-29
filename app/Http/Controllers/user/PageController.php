@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Addresstrx;
 use App\Models\Announcement;
 use App\Models\Apikey;
-use App\Models\Commission;
+use App\Models\ReferralCommissionLevel;
 use App\Models\Deposite;
 use App\Models\Energy;
 use App\Models\Event;
@@ -78,7 +78,7 @@ class PageController extends Controller
             ->first();
 
         if (!isset($todaygrab) && Auth::user()->balance > 0) {
-            $commssion = Commission::find(1);
+            $commssion = // Commission::find - deprecated, now use ReferralCommissionLevel(1);
 
             $numberToCheck = Auth::user()->balance;
             $vips = Vip::all();
@@ -148,7 +148,7 @@ class PageController extends Controller
             ->first();
 
         if (!isset($todaygrab) && Auth::user()->balance > 0) {
-            $commssion = Commission::find(1);
+            $commssion = // Commission::find - deprecated, now use ReferralCommissionLevel(1);
 
             $numberToCheck = Auth::user()->balance;
             $vips = Vip::all();
@@ -308,7 +308,7 @@ class PageController extends Controller
     public function withdraw()
     {
         $settingtrx = Settingtrx::find(1);
-        $commssion = Commission::find(1);
+        $commssion = // Commission::find - deprecated, now use ReferralCommissionLevel(1);
 
         //check total deposit
         $toaldeposit = Deposite::where('user_id', Auth::user()->id)->sum('amount');
@@ -878,7 +878,7 @@ private function getRankRequirements($rank)
 
 
                     //now refer commission
-                    $commission = Commission::find(1);
+                    $commission = // Commission::find - deprecated, now use ReferralCommissionLevel(1);
                     $user = User::find($order->user_id);
                     $firstuser = User::find($user->refer_id);
                     if (isset($firstuser)) {

@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 use App\Models\Addresstrx;
 
 use App\Models\Apikey;
-use App\Models\Commission;
+use App\Models\ReferralCommissionLevel;
 use App\Models\Deposite;
 use App\Models\Energy;
 use App\Models\Grab;

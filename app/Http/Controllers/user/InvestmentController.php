@@ -88,14 +88,26 @@ class InvestmentController extends Controller
             $commissionService = new ReferralCommissionService();
             $commissionService->distributeCommissions($investment);
 
+            // Process rank upgrades for investor and upline users
+            $rankUpgradeService = new \App\Services\RankUpgradeService();
+            $rankUpgradeService->processInvestmentRankCheck($investment);
+
             DB::commit();
 
             return back()->with('success', 'Investment of $' . number_format($amount, 2) . ' in ' . $plan->name . ' has been successfully created!');
 
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Investment failed. Please try again.');
-        }
+    DB::rollBack();
+    // Log the actual error for debugging
+    \Log::error('Investment creation failed: '.$e->getMessage(), [
+        'trace' => $e->getTraceAsString()
+    ]);
+    // Optional: show the error message in development
+    if(config('app.debug')){
+        return back()->with('error', 'Investment failed: '.$e->getMessage());
+    }
+    return back()->with('error', 'Investment failed. Please try again.');
+}
     }
 
     /**
