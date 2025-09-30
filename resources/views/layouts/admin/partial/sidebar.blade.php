@@ -44,6 +44,12 @@
             Social Links
         </a>
 
+        <!-- Trading History -->
+        <a class="nav-link {{ Request::is('admin/trading-history*') ? 'active' : '' }}" href="{{url('admin/trading-history')}}">
+            <div class="sb-nav-link-icon"><i class="fas fa-file-pdf"></i></div>
+            Trading File Upload
+        </a>
+
 
                 <a class="nav-link {{ Request::is('admin/announcement*') ? 'active' : '' }}" href="{{ url('admin/announcement') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-bell"></i></div>

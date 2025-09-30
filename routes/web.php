@@ -169,7 +169,11 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::get('active-investments/{id}', 'AdminInvestmentController@show')->name('active-investments.show');
     Route::get('active-investments/{id}/complete', 'AdminInvestmentController@complete')->name('active-investments.complete');
     Route::get('active-investments/{id}/cancel', 'AdminInvestmentController@cancel')->name('active-investments.cancel');
-    
+   
+    // Trading History Management Routes
+    Route::resource('trading-history', 'TradingHistoryController');
+    Route::post('trading-history/{tradingHistory}/toggle', 'TradingHistoryController@toggleStatus')->name('trading-history.toggle');
+  
     // Delete routes for commission management
     Route::get('investment-plans/delete/{id}', 'InvestmentPlanController@delete');
     Route::get('rank-rewards/delete/{id}', 'RankRewardController@delete');
@@ -178,11 +182,13 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
 //for user only
 Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'prefix' => 'user', 'namespace' => 'App\Http\Controllers\user'], function () {
     Route::get('dashboard', 'DashboardController@dashboard')->name('dashboard');
-
+    Route::get('trading-history/download/{id}', 'PageController@downloadTradingHistory')
+    ->name('trading-history.download');
     Route::get('history', 'PageController@history')->name('history');
     Route::get('waves', 'PageController@waves')->name('waves');
     Route::get('announcements', 'PageController@announcements')->name('announcements');
     Route::get('withdraw', 'PageController@withdraw')->name('withdraw');
+    Route::get('trading-history', 'PageController@tradingHistory')->name('trading-history');
     Route::get('deposit', 'PageController@deposit')->name('deposit');
     Route::get('deposit-details', 'PageController@depositDetails');
 

@@ -7,7 +7,7 @@ return [
     'history'=> 'Histroy',
     'support'=> 'Support',
     'menu'=> 'Menu',
-
+    'trading_history'=> 'Trading Report',
     //sidebar
     'welcome_back'=> 'Welcome Back',
     'account_details'=> 'Account Details',

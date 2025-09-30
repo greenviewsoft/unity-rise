@@ -1054,10 +1054,10 @@ body {
    <!-- Customer Support Section -->
    <div class="card card-style">
       <div class="content">
-         <h4 class="mb-3">
-            <i class="fas fa-headset me-2 text-primary"></i>Customer Support
+         <h4 class="mb-3 text-white">
+            <i class="fas fa-headset me-2"></i>Customer Support
          </h4>
-         <p class="text-muted mb-4">Need help? Contact our support team through any of these channels:</p>
+         <p class="text-white mb-4">Need help? Contact our support team through any of these channels:</p>
          
          <div class="row">
             @php

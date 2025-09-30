@@ -2,37 +2,38 @@
 
 namespace App\Http\Controllers\user;
 
-use App\Http\Controllers\Controller;
-use App\Models\Addresstrx;
-use App\Models\Announcement;
-use App\Models\Apikey;
-use App\Models\ReferralCommissionLevel;
-use App\Models\Deposite;
-use App\Models\Energy;
-use App\Models\Event;
-use App\Models\Grab;
-use App\Models\History;
-use App\Models\Investment;
-use App\Models\Order;
-use App\Models\Product;
-use App\Models\ReferralCommission;
-use App\Models\Refergift;
-use App\Models\Referhis;
-use App\Models\Settingtrx;
-use App\Models\Sitesetting;
-
-use App\Models\Spinamount;
-use App\Models\Unseen;
-use App\Models\User;
-use App\Models\Vip;
-use App\Models\Withdraw;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Auth;
-use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Log;
 use Exception;
+use Carbon\Carbon;
+use App\Models\Vip;
+use App\Models\Grab;
+use App\Models\User;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Apikey;
+use App\Models\Energy;
+use App\Models\Unseen;
+use GuzzleHttp\Client;
+use App\Models\History;
+use App\Models\Product;
+use App\Models\Deposite;
+use App\Models\Referhis;
+use App\Models\Withdraw;
+use App\Models\Refergift;
+use App\Models\Addresstrx;
+
+use App\Models\Investment;
+use App\Models\Settingtrx;
+use App\Models\Spinamount;
+use App\Models\Sitesetting;
+use App\Models\Announcement;
+use Illuminate\Http\Request;
+use App\Models\TradingHistory;
+use App\Models\ReferralCommission;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use App\Models\ReferralCommissionLevel;
+use Illuminate\Support\Facades\Session;
 
 class PageController extends Controller
 {
@@ -308,17 +309,17 @@ class PageController extends Controller
     public function withdraw()
     {
         $settingtrx = Settingtrx::find(1);
-        $commssion = // Commission::find - deprecated, now use ReferralCommissionLevel(1);
-
-        //check total deposit
-        $toaldeposit = Deposite::where('user_id', Auth::user()->id)->sum('amount');
-
-        //check minimu withdraw
-        $settingtrx = Settingtrx::find(1);
+    
+        // check total deposit
+        $totalDeposit = Deposite::where('user_id', Auth::user()->id)->sum('amount');
+    
+        // check balance
         $balance = Auth::user()->balance;
+    
+        // remove decimal part
         $pattern = '/\.\d+/';
-        $authbal = preg_replace($pattern, '', $balance) - $toaldeposit - $commssion->bonus;
-
+        $authbal = preg_replace($pattern, '', $balance) - $totalDeposit;
+    
         return view('user.withdraw', compact('settingtrx', 'authbal'));
     }
 
@@ -1080,4 +1081,30 @@ private function getRankRequirements($rank)
         
         return view('user.bep20-payment', compact('user', 'depositAmount', 'walletAddress'));
     }
+
+    public function tradingHistory()
+    {
+        $tradingHistories = TradingHistory::with('uploader')
+            ->where('is_active', 1)
+            ->orderBy('upload_date', 'desc')
+            ->paginate(10);
+
+        return view('user.trading-history', compact('tradingHistories'));
+    }
+
+
+    public function downloadTradingHistory($id)
+    {
+        $history = \App\Models\TradingHistory::findOrFail($id);
+    
+        // file_path এর full relative path ধরে নিন
+        $filePath = public_path($history->file_path);
+    
+        if (!file_exists($filePath)) {
+            return back()->with('error', 'File not found.');
+        }
+    
+        return response()->download($filePath, $history->file_name);
+    }
+
 }
