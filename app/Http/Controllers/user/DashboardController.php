@@ -15,16 +15,17 @@ use App\Models\InvestmentPlan;
 use App\Models\RankRequirement;
 use App\Models\InvestmentProfit;
 use App\Models\ReferralCommission;
+use App\Models\RankReward;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function dashboard(){
         $user = Auth::user();
         
-        // Update user rank based on current balance
-        $user->updateRank();
+        // Note: Automatic rank updates disabled - users must manually claim via Rank Upgrade Center
         
         // Today's investment profits from InvestmentProfit table
         $today = now()->toDateString();
@@ -46,6 +47,17 @@ class DashboardController extends Controller
         // All time investment profits
         $data['allgrabs'] = InvestmentProfit::where('user_id', $user->id)
             ->sum('amount');
+            
+        // Today's rank rewards (leader rewards) from RankReward table
+        $data['todayrankrewards'] = RankReward::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('created_at', $today)
+            ->sum('reward_amount');
+            
+        // All time rank rewards (leader rewards)
+        $data['allrankrewards'] = RankReward::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->sum('reward_amount');
 
         $data['events'] = Event::orderBy('id', 'asc')->get();
         $data['profitwithdraws'] = Profitwith::inRandomOrder(10)->get();
@@ -62,7 +74,7 @@ class DashboardController extends Controller
             ->get();
 
         // OPTIMIZED Team Statistics for Dashboard
-        $directReferrals = User::where('refer_id', $user->id)->get();
+        $directReferrals = $user->referrals()->get();
         $data['direct_member_count'] = $directReferrals->count();
         
         // Get direct business total with single query
@@ -170,18 +182,15 @@ public function rankRequirements()
 {
     $user = auth()->user();
 
-    // user current stats (example, তোমার নিজের relation/table থেকে আনবে)
- $personalInvestment = $user->investments()->sum('amount');   // নিজের ইনভেস্টমেন্ট
-$directReferrals    = $user->directReferrals()->count();     // সরাসরি রেফারাল সংখ্যা
+    // user current stats
+    $personalInvestment = $user->getPersonalInvestment();   // নিজের ইনভেস্টমেন্ট
+    $directReferrals    = $user->referrals()->count();     // সরাসরি রেফারাল সংখ্যা
     
-// টিম ইনভেস্টমেন্ট (level 1 downline)
-$teamInvestment = $user->directReferrals()
-    ->with('investments')
-    ->get()
-    ->sum(fn($ref) => $ref->investments->sum('amount'));
+    // টিম ইনভেস্টমেন্ট (all downline levels)
+    $teamInvestment = $user->getTeamBusinessVolume();
 
-    // বর্তমান rank বের করা
-    $currentRank = RankRequirement::where('is_active', 1)
+    // Find the highest rank the user qualifies for
+    $qualifiedRank = RankRequirement::where('is_active', 1)
         ->orderBy('rank', 'asc')
         ->get()
         ->filter(function ($rank) use ($personalInvestment, $directReferrals, $teamInvestment) {
@@ -191,54 +200,191 @@ $teamInvestment = $user->directReferrals()
         })
         ->last();
 
+    // Get current rank from database
+    $currentRank = RankRequirement::where('is_active', 1)
+        ->where('rank', $user->rank)
+        ->first();
+
     // পরবর্তী rank বের করা
     $nextRank = RankRequirement::where('is_active', 1)
-        ->where('rank', '>', ($currentRank->rank ?? 0))
+        ->where('rank', '>', $user->rank)
         ->orderBy('rank', 'asc')
         ->first();
 
-    if (!$nextRank) {
-        return view('user.rank-requirements', [
-        'next_rank_name' => null, // মানে max rank এ পৌঁছে গেছে
-    ]);
+    // If no current rank found, use default values
+    if (!$currentRank) {
+        $currentRank = (object) [
+            'rank_name' => 'Unranked',
+            'personal_investment' => 0,
+            'count_level' => 0,
+            'team_business_volume' => 0,
+            'reward_amount' => 0
+        ];
     }
 
-    // Progress হিসাব
-    $personalProgress = ($personalInvestment / $nextRank->personal_investment) * 100;
-    $directProgress   = ($directReferrals / $nextRank->count_level) * 100;
-    $teamProgress     = ($teamInvestment / $nextRank->team_business_volume) * 100;
+    // Calculate progress towards current rank requirements
+    $currentPersonalProgress = $personalInvestment;
+    $currentDirectProgress = $directReferrals;
+    $currentTeamProgress = $teamInvestment;
 
-    // Remaining হিসাব
-    $personalRemaining = max(0, $nextRank->personal_investment - $personalInvestment);
-    $directRemaining   = max(0, $nextRank->count_level - $directReferrals);
-    $teamRemaining     = max(0, $nextRank->team_business_volume - $teamInvestment);
+    // Required progress for current rank
+    $requiredPersonalProgress = $currentRank->personal_investment;
+    $requiredDirectProgress = $currentRank->count_level;
+    $requiredTeamProgress = $currentRank->team_business_volume;
 
-    // Unlock condition
+    // Progress percentages (ensure no negative values)
+    $personalProgress = $requiredPersonalProgress > 0 ? min(100, ($currentPersonalProgress / $requiredPersonalProgress) * 100) : 100;
+    $directProgress = $requiredDirectProgress > 0 ? min(100, ($currentDirectProgress / $requiredDirectProgress) * 100) : 100;
+    $teamProgress = $requiredTeamProgress > 0 ? min(100, ($currentTeamProgress / $requiredTeamProgress) * 100) : 100;
+
+    // Remaining requirements for current rank
+    $personalRemaining = max(0, $currentRank->personal_investment - $personalInvestment);
+    $directRemaining = max(0, $currentRank->count_level - $directReferrals);
+    $teamRemaining = max(0, $currentRank->team_business_volume - $teamInvestment);
+
+    // Check if user meets requirements for NEXT rank (for upgrade eligibility)
+    $nextRankUnlockReady = false;
+    if ($nextRank) {
+        $nextPersonalRemaining = max(0, $nextRank->personal_investment - $personalInvestment);
+        $nextDirectRemaining = max(0, $nextRank->count_level - $directReferrals);
+        $nextTeamRemaining = max(0, $nextRank->team_business_volume - $teamInvestment);
+        
+        $nextRankUnlockReady = ($nextPersonalRemaining == 0 && $nextDirectRemaining == 0 && $nextTeamRemaining == 0);
+    }
+    
+    // Current rank unlock condition (for display purposes)
     $rankUnlockReady = ($personalRemaining == 0 && $directRemaining == 0 && $teamRemaining == 0);
 
     return view('user.rank-requirements', [
-        'next_rank_name' => $nextRank->rank_name,
-        'next_rank_reward' => $nextRank->reward_amount,
+        'current_rank_name' => $currentRank->rank_name ?? 'Unranked',
+        'next_rank_name' => $nextRank ? $nextRank->rank_name : null,
+        'current_rank_reward' => $currentRank->reward_amount,
 
-        'next_rank_personal_req' => $nextRank->personal_investment,
-        'next_rank_direct_req'   => $nextRank->count_level,
-        'next_rank_team_req'     => $nextRank->team_business_volume,
+        'current_rank_personal_req' => $currentRank->personal_investment,
+        'current_rank_direct_req' => $currentRank->count_level,
+        'current_rank_team_req' => $currentRank->team_business_volume,
 
+        // Current user stats
         'personal_investment' => $personalInvestment,
-        'direct_referrals'    => $directReferrals,
-        'team_investment'     => $teamInvestment,
+        'direct_referrals' => $directReferrals,
+        'team_investment' => $teamInvestment,
 
+        // Progress towards current rank
+        'current_personal_progress' => $currentPersonalProgress,
+        'current_direct_progress' => $currentDirectProgress,
+        'current_team_progress' => $currentTeamProgress,
+        
+        'required_personal_progress' => $requiredPersonalProgress,
+        'required_direct_progress' => $requiredDirectProgress,
+        'required_team_progress' => $requiredTeamProgress,
+
+        // Progress percentages
         'personal_investment_progress' => min(100, $personalProgress),
-        'direct_referrals_progress'    => min(100, $directProgress),
-        'team_investment_progress'     => min(100, $teamProgress),
+        'direct_referrals_progress' => min(100, $directProgress),
+        'team_investment_progress' => min(100, $teamProgress),
 
+        // Remaining to complete current rank
         'personal_investment_remaining' => $personalRemaining,
-        'direct_referrals_remaining'    => $directRemaining,
-        'team_investment_remaining'     => $teamRemaining,
+        'direct_referrals_remaining' => $directRemaining,
+        'team_investment_remaining' => $teamRemaining,
 
         'rank_unlock_ready' => $rankUnlockReady,
+        'next_rank_unlock_ready' => $nextRankUnlockReady,
     ]);
 }
 
+public function upgradeRank()
+{
+    try {
+        $user = auth()->user();
+        
+        // Get user current stats
+        $personalInvestment = $user->getPersonalInvestment();
+        $directReferrals = $user->referrals()->count();
+        $teamInvestment = $user->getTeamBusinessVolume();
+        
+        // Get next rank requirements
+        $nextRank = RankRequirement::where('is_active', 1)
+            ->where('rank', '>', ($user->rank ?? 0))
+            ->orderBy('rank', 'asc')
+            ->first();
+            
+        if (!$nextRank) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already reached the maximum rank!'
+            ]);
+        }
+        
+        // Check if user meets all requirements
+        $meetsPersonal = $personalInvestment >= $nextRank->personal_investment;
+        $meetsDirect = $directReferrals >= $nextRank->count_level;
+        $meetsTeam = $teamInvestment >= $nextRank->team_business_volume;
+        
+        if (!($meetsPersonal && $meetsDirect && $meetsTeam)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not meet all requirements for the next rank yet!'
+            ]);
+        }
+        
+        DB::beginTransaction();
+        
+        try {
+            $oldRank = $user->rank ?? 0;
+            
+            // Update user rank
+            $user->update([
+                'rank' => $nextRank->rank,
+                'rank_upgraded_at' => now()
+            ]);
+            
+            // Add bonus reward to user balance
+            if ($nextRank->reward_amount > 0) {
+                $user->increment('balance', $nextRank->reward_amount);
+                
+                // Create rank reward record
+                RankReward::create([
+                    'user_id' => $user->id,
+                    'rank' => $nextRank->rank,
+                    'reward_amount' => $nextRank->reward_amount,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                // Create history record
+                History::create([
+                    'user_id' => $user->id,
+                    'amount' => $nextRank->reward_amount,
+                    'type' => 'Rank Bonus',
+                    'status' => 'completed',
+                    'description' => "Rank upgrade bonus for achieving {$nextRank->rank_name} rank",
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Congratulations! You have been upgraded to {$nextRank->rank_name} rank!",
+                'bonus_amount' => $nextRank->reward_amount,
+                'new_rank' => $nextRank->rank_name,
+                'redirect_url' => route('rank.requirements')
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while upgrading your rank. Please try again.'
+        ]);
+    }
+}
 
 }

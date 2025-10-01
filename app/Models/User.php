@@ -50,17 +50,7 @@ class User extends Authenticatable
     {
         parent::boot();
         
-        static::updated(function ($user) {
-            if ($user->isDirty('balance')) {
-                // Trigger rank upgrade check when balance changes
-                try {
-                    $rankUpgradeService = new \App\Services\RankUpgradeService();
-                    $rankUpgradeService->checkUserRankUpgrade($user);
-                } catch (\Exception $e) {
-                    \Log::error("Auto rank upgrade failed for user {$user->id}: " . $e->getMessage());
-                }
-            }
-        });
+        // Note: Automatic rank upgrades removed - users must manually claim via Rank Upgrade Center
     }
 
 
@@ -135,21 +125,13 @@ public function clearTeamBusinessVolumeCache()
         return $this->hasMany(RankReward::class, 'user_id');
     }
 
-    /**
-     * Process rank upgrade
-     */
-    public function processRankUpgrade()
-    {
-        $rankUpgradeService = new \App\Services\RankUpgradeService();
-        return $rankUpgradeService->checkUserRankUpgrade($this);
-    }
+    // Note: processRankUpgrade method removed - rank upgrades are now manual only
 
     
     
     /**
  * Get all downline user IDs recursively
  */
-
 public function getDownlineUserIds($depth = 0, $maxDepth = 40)
 {
     if ($depth >= $maxDepth) {
@@ -158,8 +140,8 @@ public function getDownlineUserIds($depth = 0, $maxDepth = 40)
     
     $downlineIds = [];
     
-    // Get all direct referrals
-    $directReferrals = User::where('refer_id', $this->id)->get();
+    // Get all direct referrals (both active and inactive)
+    $directReferrals = $this->referrals()->get();
     
     foreach ($directReferrals as $referral) {
         $downlineIds[] = $referral->id;
@@ -187,16 +169,18 @@ public function getTeamBusinessVolume($depth = 0, $maxDepth = 40)
     }
     
     $totalVolume = 0;
-    $directReferrals = $this->referrals()->where('status', 'active')->get();
+    
+    // Get direct referrals (both active and inactive users can have investments)
+    $directReferrals = $this->referrals()->get();
     
     foreach ($directReferrals as $referral) {
-        // Add referral's investment
+        // Add referral's investment (only active investments)
         $referralInvestment = $referral->investments()
                                       ->where('status', 'active')
                                       ->sum('amount');
         $totalVolume += $referralInvestment;
         
-        // Add team volume from this referral
+        // Add team volume from this referral's downline
         $totalVolume += $referral->getTeamBusinessVolume($depth + 1, $maxDepth);
     }
     
@@ -231,21 +215,7 @@ public function createTransactionLog($data)
     );
 }
 
-    /**
-     * Update user rank based on current eligibility
-     * 
-     * @return int Current rank after update
-     */
-    public function updateRank()
-    {
-        try {
-            $rankService = app(\App\Services\RankUpgradeService::class);
-            return $rankService->checkUserRankUpgrade($this);
-        } catch (\Exception $e) {
-            \Log::error("Failed to update rank for user {$this->id}: " . $e->getMessage());
-            return $this->rank ?? 0;
-        }
-    }
+    // Note: updateRank method removed - rank upgrades are now manual only
 
     /**
      * Get the rank name for the user's current rank

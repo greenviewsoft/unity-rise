@@ -15,6 +15,7 @@ class RankRequirement extends Model
         'team_business_volume',
         'count_level',
         'personal_investment',
+        'direct_referrals',
         'reward_amount',
         'is_active'
     ];

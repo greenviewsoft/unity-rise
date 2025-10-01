@@ -191,7 +191,7 @@
                                                 <th scope="col">Email</th>
                                                 <th scope="col">Account</th>
                                                 <th scope="col" class="text-end">Invest</th>
-                                                <th scope="col" class="text-end">Profit</th>
+                                                
                                                
                                             </tr>
                                         </thead>
@@ -204,7 +204,7 @@
                                                     <td class="text-white small">{{ $refersuser->email }}</td>
                                                     <td class="text-white small">{{ $refersuser->username }}</td>
                                                     <td class="text-end text-white small">{{ number_format($refersuser->total_deposit, 2) }} <span class="text-muted">USDT</span></td>
-                                                    <td class="text-end text-white small">{{ number_format($refersuser->total_profit, 2) }} <span class="text-muted">USDT</span></td>
+                                                   
                                                    
                                                 </tr>
                                             @endforeach

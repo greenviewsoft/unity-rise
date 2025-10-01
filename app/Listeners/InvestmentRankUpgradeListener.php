@@ -31,6 +31,11 @@ class InvestmentRankUpgradeListener implements ShouldQueue
      */
     public function handle($event)
     {
+        // Automatic rank upgrades disabled - users must manually claim via Rank Upgrade Center
+        Log::info('Investment event received but automatic rank upgrades are disabled');
+        return;
+        
+        /*
         try {
             // Check if the event has an investment
             if (isset($event->investment)) {
@@ -43,5 +48,6 @@ class InvestmentRankUpgradeListener implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Investment rank upgrade listener failed: ' . $e->getMessage());
         }
+        */
     }
 }

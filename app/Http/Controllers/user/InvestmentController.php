@@ -88,9 +88,7 @@ class InvestmentController extends Controller
             $commissionService = new ReferralCommissionService();
             $commissionService->distributeCommissions($investment);
 
-            // Process rank upgrades for investor and upline users
-            $rankUpgradeService = new \App\Services\RankUpgradeService();
-            $rankUpgradeService->processInvestmentRankCheck($investment);
+            // Note: Rank upgrades are now manual only - users must claim via Rank Upgrade Center
 
             DB::commit();
 

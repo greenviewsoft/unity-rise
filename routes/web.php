@@ -70,8 +70,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function () {
 
 
 Route::group(['middleware' => 'loginck', 'namespace' => 'App\Http\Controllers'], function () {
-    Route::get('/', 'WelcomeController@welcome');
-    Route::get('/', 'WelcomeController@login')->name('login');
+    Route::get('/', 'WelcomeController@welcome')->name('welcome');
+    Route::get('/login', 'WelcomeController@login')->name('login');
     Route::post('/login', 'LoginController@loginVal');
     Route::get('/register', 'LoginController@register');
     Route::get('/index.html', 'LoginController@register');
@@ -241,6 +241,13 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     
     // Rank requirements page
     Route::get('rank/requirements', 'DashboardController@rankRequirements')->name('rank.requirements');
+    Route::post('rank/upgrade', 'DashboardController@upgradeRank')->name('rank.upgrade');
+    
+    // Rank upgrade management routes
+    Route::get('rank/upgrade-center', 'RankUpgradeController@index')->name('rank.upgrade-center');
+    Route::get('rank/check-eligibility', 'RankUpgradeController@checkEligibility')->name('rank.check-eligibility');
+    Route::post('rank/claim-upgrade', 'RankUpgradeController@claimUpgrade')->name('rank.claim-upgrade');
+    Route::get('rank/history', 'RankUpgradeController@history')->name('rank.history');
 });
 
 // cache clear

@@ -312,6 +312,8 @@ body {
     text-decoration: none;
 }
 
+
+
 .max-rank-section {
     text-align: center;
     margin: 20px 0;
@@ -626,6 +628,8 @@ body {
 </div>
 @endif
 
+
+
             <div class="align-self-center ms-auto text-end">
                <i class="refress bi bi-arrow-clockwise"></i>
             </div>
@@ -642,7 +646,6 @@ body {
             <a href="{{ url('user/history') }}" class="py-1">
                <div class="align-self-center ps-1">
                   <h5 class="pt-1 mb-n1">{{ __('lang.today_profit') }}</h5>
-                
                </div>
                <div class="align-self-center ms-auto">
                   <h4 class="pt-1 mb-n1 color-blue-dark">${{ number_format($todaygrabs, 2) }}</h4>
@@ -665,11 +668,11 @@ body {
             <!-- Accumulated Profits from Leader Rewards -->
             <a href="{{ url('user/history') }}" class="py-1">
                <div class="align-self-center ps-1">
-                  <h5 class="pt-1 mb-n1">{{ __('lang.acc_profit') }}</h5>
+                  <h5 class="pt-1 mb-n1">Team Income</h5>
                  
                </div>
                <div class="align-self-center ms-auto">
-                  <h4 class="pt-1 mb-n1 color-purple-dark">${{ number_format($allrefercom + $allgrabs, 2) }}</h4>
+                  <h4 class="pt-1 mb-n1 color-purple-dark">${{ number_format($allrankrewards, 2) }}</h4>
                </div>
             </a>
          </div>

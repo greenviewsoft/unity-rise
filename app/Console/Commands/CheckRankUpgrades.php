@@ -64,7 +64,7 @@ class CheckRankUpgrades extends Command
             // Check all active users
             $this->info("Checking rank upgrades for all active users (limit: {$limit})...");
             
-            $users = User::where('status', 'active')
+            $users = User::whereIn('status', ['1', 'on'])
                         ->orderBy('updated_at', 'desc')
                         ->limit($limit)
                         ->get();

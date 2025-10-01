@@ -107,7 +107,7 @@
                     <div class="col-12">
                         <h3 class="text-center mb-4">
                             <i class="fas fa-trophy text-warning me-2"></i>
-                            Rank Overview
+                            Rank Overview 
                         </h3>
                     </div>
                     @foreach($rankCommissionData as $rank => $data)

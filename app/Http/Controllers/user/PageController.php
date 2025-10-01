@@ -450,7 +450,7 @@ public function team()
         ->sum('amount');
 
     // OPTIMIZED STATISTICS - Direct Members and Business
-    $directReferrals = User::where('refer_id', $currentUser->id)->get();
+    $directReferrals = $currentUser->referrals()->get();
     $data['direct_member_count'] = $directReferrals->count();
     
     // Get direct business total with single query

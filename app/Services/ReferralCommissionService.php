@@ -33,7 +33,7 @@ class ReferralCommissionService
             $currentUser = $investor;
             $level = 1;
             
-            while ($currentUser->refer_id && $level <= 40) { // Max 40 levels as per your data
+            while ($currentUser->refer_id && $level <= 40) { // Max 40 levels as per system
                 $referrer = User::find($currentUser->refer_id);
                 
                 if (!$referrer) {
@@ -44,6 +44,17 @@ class ReferralCommissionService
                 // Get referrer's current rank
                 $referrerRank = $this->getUserRank($referrer);
                 
+                // Check if this level is within the referrer's rank max levels
+                $maxLevelsForRank = $this->getMaxLevelsForRank($referrerRank);
+                
+                if ($level > $maxLevelsForRank) {
+                    Log::info("Level {$level} exceeds max levels ({$maxLevelsForRank}) for rank {$referrerRank} of user {$referrer->id}");
+                    // Move to next level but don't give commission
+                    $currentUser = $referrer;
+                    $level++;
+                    continue;
+                }
+                
                 // Get commission rate for this level and rank
                 $commissionData = $this->getCommissionRate($referrerRank, $level);
                 
@@ -53,7 +64,7 @@ class ReferralCommissionService
                     // Create commission record
                     $this->createCommissionRecord($referrer, $investor, $investment, $commissionAmount, $level, $commissionData);
                     
-                    Log::info("Level {$level} commission created for user {$referrer->id}, Amount: {$commissionAmount}");
+                    Log::info("Level {$level} commission created for user {$referrer->id} (Rank: {$referrerRank}), Amount: {$commissionAmount}");
                 } else {
                     Log::info("No commission rate found for rank {$referrerRank} at level {$level}");
                 }
@@ -74,12 +85,12 @@ class ReferralCommissionService
     }
     
     /**
-     * Get user's current rank based on requirements
+     * Get user's current rank
      */
-    private function getUserRank($user)
+    private function getUserRank(User $user)
     {
-        // Use existing rank field from users table
-        return $user->rank ?? 1;
+        // Check if user has a rank field, otherwise default to Rookie (rank 1)
+        return $user->rank ?? 1; // Default to rank 1 (Rookie) if no rank set
     }
     
     /**
@@ -91,6 +102,18 @@ class ReferralCommissionService
             ->where('level', $level)
             ->where('is_active', 1)
             ->first();
+    }
+    
+    /**
+     * Get maximum levels for a specific rank
+     */
+    private function getMaxLevelsForRank($rankId)
+    {
+        $commissionLevel = ReferralCommissionLevel::where('rank_id', $rankId)
+            ->where('is_active', 1)
+            ->first();
+            
+        return $commissionLevel ? $commissionLevel->max_levels : 6; // Default to Rookie level
     }
     
     /**
@@ -127,30 +150,50 @@ class ReferralCommissionService
     }
     
     /**
-     * Check and update user rank based on requirements
+     * Check and update user rank if requirements are met
      */
-    public function checkAndUpdateUserRank($userId)
+    public function checkAndUpdateUserRank(User $user)
     {
-        $user = User::find($userId);
-        if (!$user) return;
+        $currentRank = $user->rank ?? 1;
         
-        // Get all rank requirements ordered by rank
-        $rankRequirements = RankRequirement::orderBy('rank_id')->get();
-        
-        $userStats = $this->getUserStats($userId);
-        
-        foreach ($rankRequirements as $requirement) {
-            if ($this->meetsRankRequirement($userStats, $requirement)) {
-                if ($user->rank < $requirement->rank_id) {
-                    $user->update(['rank' => $requirement->rank_id]);
+        // Check for rank upgrades (starting from current rank + 1)
+        $requirements = RankRequirement::where('rank', '>', $currentRank)
+            ->where('is_active', 1)
+            ->orderBy('rank')
+            ->get();
+            
+        foreach ($requirements as $requirement) {
+            if ($this->meetsRankRequirement($user, $requirement->rank)) {
+                // Update user rank
+                $oldRank = $user->rank;
+                $user->rank = $requirement->rank;
+                $user->save();
+                
+                // Award rank reward if applicable
+                if ($requirement->reward_amount > 0) {
+                    $user->balance += $requirement->reward_amount;
+                    $user->save();
                     
-                    // Give rank reward
-                    $rankData = ReferralCommissionLevel::where('rank_id', $requirement->rank_id)->first();
-                    if ($rankData && $rankData->rank_reward > 0) {
-                        $user->increment('refer_commission', $rankData->rank_reward);
-                        Log::info("Rank reward given to user {$userId}: {$rankData->rank_reward}");
-                    }
+                    // Create a transaction record for the rank reward
+                    \App\Models\Transaction::create([
+                        'user_id' => $user->id,
+                        'type' => 'rank_reward',
+                        'amount' => $requirement->reward_amount,
+                        'description' => "Rank upgrade reward from {$requirement->rank_name}",
+                        'status' => 'completed',
+                        'created_at' => now(),
+                    ]);
+                    
+                    Log::info("Rank reward awarded to user {$user->id}: {$requirement->reward_amount} for upgrading to {$requirement->rank_name}");
                 }
+                
+                Log::info("User {$user->id} upgraded from rank {$oldRank} to rank {$requirement->rank} ({$requirement->rank_name})");
+                
+                // Continue checking for higher ranks
+                $currentRank = $requirement->rank;
+            } else {
+                // If user doesn't meet this rank requirement, stop checking higher ranks
+                break;
             }
         }
     }
@@ -177,9 +220,27 @@ class ReferralCommissionService
      */
     private function meetsRankRequirement($userStats, $requirement)
     {
-        // Implement your rank requirement logic here
-        // This depends on your rank_requirements table structure
-        return true; // Placeholder - implement based on your requirements
+        // Check personal investment requirement
+        if (isset($requirement->personal_investment) && $userStats['personal_investment'] < $requirement->personal_investment) {
+            return false;
+        }
+        
+        // Check team business volume requirement
+        if (isset($requirement->team_business_volume) && $userStats['total_team_investment'] < $requirement->team_business_volume) {
+            return false;
+        }
+        
+        // Check total referrals requirement
+        if (isset($requirement->total_referrals) && $userStats['total_referrals'] < $requirement->total_referrals) {
+            return false;
+        }
+        
+        // Check active referrals requirement
+        if (isset($requirement->active_referrals) && $userStats['active_referrals'] < $requirement->active_referrals) {
+            return false;
+        }
+        
+        return true;
     }
     
     /**

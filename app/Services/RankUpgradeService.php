@@ -174,7 +174,7 @@ class RankUpgradeService
             return;
         }
 
-        $directReferrals = $user->referrals()->where('status', 'active')->get();
+        $directReferrals = $user->referrals()->whereIn('status', ['1', 'on'])->get();
         
         foreach ($directReferrals as $referral) {
             // Add referral's investment to total volume
@@ -208,7 +208,7 @@ class RankUpgradeService
         }
 
         $directReferrals = $user->referrals()
-                               ->where('status', 'active')
+                               ->whereIn('status', ['1', 'on'])
                                ->whereHas('investments', function($query) {
                                    $query->where('status', 'active');
                                })
