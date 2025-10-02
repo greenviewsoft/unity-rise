@@ -9,6 +9,7 @@ use App\Models\Energy;
 use App\Models\History;
 use App\Models\Order;
 use App\Models\ReferralCommission;
+use App\Models\Settingtrx;
 use App\Models\Sitesetting;
 use App\Models\Usdtdeposit;
 use App\Models\User;
@@ -183,6 +184,9 @@ class PostController extends Controller
         $toaldeposit = Deposite::where('user_id', Auth::user()->id)
         ->sum('amount');
 
+        // Get settings for withdraw validation
+        $settingtrx = Settingtrx::find(1);
+
         //check minimu withdraw
         // Old Commission model replaced with ReferralCommissionLevel
         // Commission logic is now handled by ReferralCommissionService
@@ -191,7 +195,7 @@ class PostController extends Controller
         $authbal = preg_replace($pattern, '', $balance) - $toaldeposit;
 
         // Minimum withdraw amount (replace with app setting)
-        $minWithdraw = 10; // Default minimum withdraw
+        $minWithdraw = $settingtrx->min_withdraw ?? 10; // Use setting or default minimum withdraw
         if ($authbal > $minWithdraw) {
             
         } else {
@@ -211,8 +215,6 @@ class PostController extends Controller
         }
 
         try {
-            $settingtrx = Settingtrx::find(1);
-
             $percentage = ($request->quantity/100) * $settingtrx->withdraw_vat;
             $amount = $percentage + $settingtrx->withdraw_vat;
 
