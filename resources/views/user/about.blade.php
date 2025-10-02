@@ -16,17 +16,21 @@
     <div class="page-content footer-clear">
         <div class="page_top_title deposit_page">
             <div class="arrow"><a href="{{ url('user/dashboard') }}"><i class="bi bi-arrow-left-circle-fill"></i></a></div>
-            <h3 class="text-center">About usdt-grab.vip</h3>
+            <h3 class="text-center">About</h3>
             <div class="telegram_boat"></div>
         </div>
 
         <div class="about-sc">
        <div class="about-to-banner">
-          <img src="{{ asset('public/assets/user/images/') }}/about.png" alt="about">
+<img src="{{ asset('public/'.$sitesetting->about_image) }}" alt="about image">
        </div>
        <div class="content about-description">
-          <h4 class="title">About Us</h4>
-          <p>Since {{ config('app.name') }} members come from various countries and use different currencies, {{ config('app.name') }} employs cryptocurrency transactions to streamline the process. Please ensure to verify {{ config('app.name') }}'s USDT address diligently before recharging (the platform recharge address is subject to change, and users must visit the platform for the latest recharge address before proceeding). For any inquiries, kindly reach out to customer service</p>
+          @if($sitesetting && $sitesetting->about_content)
+             {!! $sitesetting->about_content !!}
+          @else
+             <h4 class="title">About Us</h4>
+             <p>Since {{ config('app.name') }} members come from various countries and use different currencies, {{ config('app.name') }} employs cryptocurrency transactions to streamline the process. Please ensure to verify {{ config('app.name') }}'s USDT address diligently before recharging (the platform recharge address is subject to change, and users must visit the platform for the latest recharge address before proceeding). For any inquiries, kindly reach out to customer service</p>
+          @endif
     </div>
 
     </div>

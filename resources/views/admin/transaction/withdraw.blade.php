@@ -98,7 +98,7 @@
                                         @php
                                             $user = App\Models\User::find($withdraw->user_id);
                                         @endphp
-                                        <td>{{ $user->phone }} | {{ $user->username }}</td>
+                                        <td>{{ $user ? ($user->phone . ' | ' . $user->username) : 'User Not Found' }}</td>
                                         <td>#{{ $withdraw->id }}</td>
                                         <td>{{ $withdraw->txaddress }}</td>
                                         <td>{{ $withdraw->type }}</td>

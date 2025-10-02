@@ -22,82 +22,41 @@
 
     <div class="about-sc">
        <div class="about-to-banner">
-          <img src="{{ asset('public/assets/user/images/') }}/promotion.png" alt="promotion">
-       </div>
+
+
+<img src="{{ asset('public/'.$sitesetting->promotion_image) }}" alt="promotion_image ">
+
+
+
+          
+        </div>
        <div class="content about-description">
-          <h4 class="title">{{ config('app.name') }} Agency Cooperation Program</h4>
-          <p>{{ config('app.name') }} allows members to earn rewards by inviting friends and family to join. Provide a unique invitation code for others, allowing them to receive additional rewards from the invitees' first deposit.</p>
+          @if($sitesetting && $sitesetting->promotion_content)
+             {!! $sitesetting->promotion_content !!}
+          @else
+             <h4 class="title">{{ config('app.name') }} Agency Cooperation Program</h4>
+             <p>{{ config('app.name') }} allows members to earn rewards by inviting friends and family to join. Provide a unique invitation code for others, allowing them to receive additional rewards from the invitees' first deposit.</p>
 
-          <h4 class="title">Invitation qualifications</h4>
-          <p>• The inviter must be a member of the  {{ config('app.name') }} platform
-             • Inviters must fully comply with all terms and conditions in order to participate in the  {{ config('app.name') }} agency cooperation program
+             <h4 class="title">Invitation qualifications</h4>
+             <p>• The inviter must be a member of the  {{ config('app.name') }} platform
+                • Inviters must fully comply with all terms and conditions in order to participate in the  {{ config('app.name') }} agency cooperation program
+             </p>
+
+             <h4 class="title">Basic information</h4>
+             <p>When relatives and friends use your invitation code to register for a  {{ config('app.name') }}  account, it means that you have participated in the {{ config('app.name') }}  agency cooperation program, and that you fully and unconditionally agree to these terms and conditions, as well as the decision and interpretation of  {{ config('app.name') }} . These decisions and interpretations are final and binding on all matters relating to the plan.
+             </p>
+
+          <h4 class="title">Invite</h4>
+          <p>• The invitation code can be used to scan the code when relatives and friends register. Relatives and friends scan the inviter's invitation code to become the main agent of the invitee.
           </p>
 
-          <h4 class="title">Basic information</h4>
-          <p>When relatives and friends use your invitation code to register for a  {{ config('app.name') }}  account, it means that you have participated in the {{ config('app.name') }}  agency cooperation program, and that you fully and unconditionally agree to these terms and conditions, as well as the decision and interpretation of  {{ config('app.name') }} . These decisions and interpretations are final and binding on all matters relating to the plan.
+          <h4 class="title"> Reward method</h4>
+          <p>  • The reward depends on the first deposit amount of the invited relatives and friends, and the relative position of the invitees in the agency program determines the rewards you can get.
+
           </p>
+          @endif
 
-       <h4 class="title">Invite</h4>
-       <p>• The invitation code can be used to scan the code when relatives and friends register. Relatives and friends scan the inviter's invitation code to become the main agent of the invitee.
-       </p>
-
-       <h4 class="title"> Reward method</h4>
-       <p>  • The reward depends on the first deposit amount of the invited relatives and friends, and the relative position of the invitees in the agency program determines the rewards you can get.
-
-       </p>
-
-       <table class="text-center table color-theme border-blue-dark ">
-             <thead class="">
-                <tr class="color-white">
-                   <th scope="col">
-                      <h5 class="color-white font-15 mb-0">Level</h5>
-                   </th>
-                   <th scope="col">
-                      <h5 class="color-white font-15 mb-0">Percentage</h5>
-                   </th>
-                </tr>
-             </thead>
-             <tbody>
-
-               @php
-                  $userRank = auth()->user()->rank ?? 1;
-                  $commissionLevels = App\Models\ReferralCommissionLevel::where('rank_id', $userRank)
-                                        ->where('is_active', true)
-                                        ->orderBy('level')
-                                        ->get();
-               @endphp
-               
-               @foreach($commissionLevels as $level)
-                <tr>
-                   <td><strong>LEVEL {{ $level->level }}</strong></td>
-                   <td>{{ $level->commission_rate }}%</td>
-                </tr>
-               @endforeach
-                
-             </tbody>
-          </table>
-
-       <!--<h4 class="title"> Remark</h4>-->
-       <!--<p> 1. All personal bonuses generated by participating in the  shahzadie.com  promotion program are paid by  shahzadie.com  and will not affect the member's income.-->
-
-       <!--2. Every invitee's first deposit, regardless of the amount, will be calculated as a reward according to the deposit amount and will be automatically distributed by the system.-->
-       <!--<br>-->
-       <!-- <img style="width: 100%;padding: 20px 0;" src="{{ asset('public/assets/user/images/') }}/33e41b0.png" alt="33e41b0.png">-->
-
-
-       <!-- <b>For each invitee's (D) first deposit, the immediate superior agent (C) receives an 12% bonus on the amount deposited, and the two tiers (if any) of agents further up receive a 6% and 3% bonus in that order, up to a maximum of three tiers.</b>-->
-      
-       <!--</p>-->
-
-       <h4 class="title">Disclaimer</h4>
-       <p>• The Commission and reward obtained by the invited members will be distributed to the account of the inviter every day. Inviters can view the commissions and rewards in fund details.
-
-          • The terms and conditions contained herein may be changed or modified at any time. Your continued participation in the program means that you accept any changes or modifications to these terms and conditions.
-
-          • In case of fraud or other related behaviors, including but not limited to the above examples,  {{ config('app.name') }}  reserves the right to warn or freeze your account.
-
-          • The agency cooperation plan of  {{ config('app.name') }}  is operated by  {{ config('app.name') }} , and the final interpretation right belongs to  {{ config('app.name') }} .
-          </p>
+     
 
        </div>
        <div class="card card-style more-link">

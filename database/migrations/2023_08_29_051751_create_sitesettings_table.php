@@ -31,6 +31,15 @@ return new class extends Migration
 
             $table->boolean('development')->default(true);
             $table->string('app_url')->default('https://localhost/trc20/' . strtolower(config('app.name')));
+            $table->longText('rule_content')->nullable();
+            $table->longText('about_content')->nullable();
+            $table->longText('promotion_content')->nullable();
+            $table->string('promotion_image')->nullable();
+            $table->string('about_image')->nullable();
+            $table->string('rule_image')->nullable();
+
+
+
             
             $table->timestamps();
         });

@@ -157,25 +157,16 @@
                                     </div>
 
 
-                                    <div class="form-row col-md-12">
-                                        <div class="form-group">
-                                            <label>Development mode</label>
-                                            <select class="form-control" name="development" aria-label="Default select example" >
-                                                <option {{$sitesetting->development == 'true' ? 'selected' : ''}} value="true">True</option>
-                                                <option {{$sitesetting->development == 'false' ? 'selected' : ''}} value="false">False</option>
-                                              </select>
-                                            @error('development')
-                                            <span style="color: red;">
-                                                    <strong>{{ $message }}</strong>
-                                                </span>
-                                            @enderror
-                                        </div>
-                                    </div>
+                                    
+
+
+
+                                 
 
                                     <div class="form-group col-md-12">
-                                        <label>Accumulated profite</label>
-                                        <input type="text" name="accumulated_profite" class="form-control" value="{{$sitesetting->accumulated_profite}}"/>
-                                        @error('accumulated_profite')
+                                        <label>Rule Page Content</label>
+                                        <textarea name="rule_content" id="rule_content" class="form-control ckeditor" rows="10">{{$sitesetting->rule_content}}</textarea>
+                                        @error('rule_content')
                                         <span style="color: red;">
                                                 <strong>{{ $message }}</strong>
                                             </span>
@@ -183,20 +174,9 @@
                                     </div>
 
                                     <div class="form-group col-md-12">
-                                        <label>Accumulated USD</label>
-                                        <input type="text" name="accumulated_usd" class="form-control" value="{{$sitesetting->accumulated_usd}}"/>
-                                        @error('accumulated_usd')
-                                        <span style="color: red;">
-                                                <strong>{{ $message }}</strong>
-                                            </span>
-                                        @enderror
-                                    </div>
-
-
-                                    <div class="form-group col-md-12">
-                                        <label>Membership</label>
-                                        <input type="text" name="membership" class="form-control" value="{{$sitesetting->membership}}"/>
-                                        @error('membership')
+                                        <label>About Page Content</label>
+                                        <textarea name="about_content" id="about_content" class="form-control ckeditor" rows="10">{{$sitesetting->about_content}}</textarea>
+                                        @error('about_content')
                                         <span style="color: red;">
                                                 <strong>{{ $message }}</strong>
                                             </span>
@@ -204,9 +184,57 @@
                                     </div>
 
                                     <div class="form-group col-md-12">
-                                        <label>Membership USD</label>
-                                        <input type="text" name="membership_usd" class="form-control" value="{{$sitesetting->membership_usd}}"/>
-                                        @error('membership_usd')
+                                        <label>Promotion Page Content</label>
+                                        <textarea name="promotion_content" id="promotion_content" class="form-control ckeditor" rows="10">{{$sitesetting->promotion_content}}</textarea>
+                                        @error('promotion_content')
+                                        <span style="color: red;">
+                                                <strong>{{ $message }}</strong>
+                                            </span>
+                                        @enderror
+                                    </div>
+
+                                    <div class="form-group col-md-12">
+                                        <label>Promotion Banner Image</label>
+                                        <input type="file" name="promotion_image" class="form-control" accept="image/*"/>
+                                        @if($sitesetting->promotion_image)
+                                            <div class="mt-2">
+                                                <img src="{{ asset('public/'.$sitesetting->promotion_image) }}" alt="Current promotion image" style="max-width: 200px; height: auto;">
+                                                <p class="text-muted">Current promotion image</p>
+                                            </div>
+                                        @endif
+                                        @error('promotion_image')
+                                        <span style="color: red;">
+                                                <strong>{{ $message }}</strong>
+                                            </span>
+                                        @enderror
+                                    </div>
+
+                                    <div class="form-group col-md-12">
+                                        <label>About Page Banner Image</label>
+                                        <input type="file" name="about_image" class="form-control" accept="image/*"/>
+                                        @if($sitesetting->about_image)
+                                            <div class="mt-2">
+                                                <img src="{{ asset('public/'.$sitesetting->about_image) }}" alt="Current about image" style="max-width: 200px; height: auto;">
+                                                <p class="text-muted">Current about image</p>
+                                            </div>
+                                        @endif
+                                        @error('about_image')
+                                        <span style="color: red;">
+                                                <strong>{{ $message }}</strong>
+                                            </span>
+                                        @enderror
+                                    </div>
+
+                                    <div class="form-group col-md-12">
+                                        <label>Rule Page Banner Image</label>
+                                        <input type="file" name="rule_image" class="form-control" accept="image/*"/>
+                                        @if($sitesetting->rule_image)
+                                            <div class="mt-2">
+                                                <img src="{{ asset('public/'.$sitesetting->rule_image) }}" alt="Current rule image" style="max-width: 200px; height: auto;">
+                                                <p class="text-muted">Current rule image</p>
+                                            </div>
+                                        @endif
+                                        @error('rule_image')
                                         <span style="color: red;">
                                                 <strong>{{ $message }}</strong>
                                             </span>

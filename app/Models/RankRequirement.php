@@ -20,9 +20,6 @@ class RankRequirement extends Model
         'is_active'
     ];
 
-
-
-    
     protected $casts = [
         'team_business_volume' => 'decimal:2',
         'personal_investment' => 'decimal:2',
@@ -30,68 +27,109 @@ class RankRequirement extends Model
         'is_active' => 'boolean'
     ];
 
-    /**
-     * Get rank requirements for a specific rank
-     */
-    public static function getRequirementsForRank($rank)
+    /** Get current rank for user */
+    public static function getCurrentRankForUser($user)
     {
-        return self::where('rank', $rank)
-                  ->where('is_active', true)
-                  ->first();
+        return self::where('is_active', true)
+                   ->where('rank', $user->rank ?? 1)
+                   ->first();
     }
 
-    /**
-     * Get all active rank requirements
-     */
+    /** Get next rank for user */
+    public static function getNextRankForUser($user)
+    {
+        return self::where('is_active', true)
+                   ->where('rank', '>', $user->rank ?? 0)
+                   ->orderBy('rank')
+                   ->first();
+    }
+
+    /** Get requirements for specific rank */
+    public static function getRequirementsForRank($rankNumber)
+    {
+        return self::where('is_active', true)
+                   ->where('rank', $rankNumber)
+                   ->first();
+    }
+
+    /** Get all active ranks */
     public static function getActiveRequirements()
     {
         return self::where('is_active', true)
-                  ->orderBy('rank')
-                  ->get();
+                   ->orderBy('rank')
+                   ->get();
     }
 
-    /**
-     * Check if user meets requirements for this rank
-     */
-    public function checkUserEligibility($user)
+    /** Recursive team members IDs */
+    public static function getTeamIds($userId)
     {
-        // Check team business volume
-        $teamBV = $user->getTeamBusinessVolume();
-        if ($teamBV < $this->team_business_volume) {
-            return false;
+        $allTeamIds = collect([]);
+        $queue = [$userId];
+
+        while(count($queue) > 0) {
+            $current = array_shift($queue);
+            $children = \App\Models\User::where('refer_id', $current)->pluck('id')->toArray();
+            $queue = array_merge($queue, $children);
+            $allTeamIds = $allTeamIds->merge($children);
         }
 
-        // Check count level (team depth)
-        $teamDepth = $user->getTeamDepth();
-        if ($teamDepth < $this->count_level) {
-            return false;
-        }
-
-        // Check personal investment
-        $personalInvestment = $user->getPersonalInvestment();
-        if ($personalInvestment < $this->personal_investment) {
-            return false;
-        }
-
-        return true;
+        return $allTeamIds->unique();
     }
 
-    /**
-     * Get rank name from database
-     */
+    /** Get user stats */
+    public static function getUserStats($user)
+    {
+        // Personal Investment
+        $personalInvestment = \App\Models\Investment::where('user_id', $user->id)
+                                                    ->where('status', 'active')
+                                                    ->sum('amount');
+
+        // Direct referrals
+        $directReferrals = \App\Models\User::where('refer_id', $user->id)->count();
+
+        // Team Investment (recursive)
+        $teamIds = self::getTeamIds($user->id);
+        $teamInvestment = $teamIds->count() > 0
+            ? \App\Models\Investment::whereIn('user_id', $teamIds)->where('status', 'active')->sum('amount')
+            : 0;
+
+        return [
+            'personal_investment' => (float) $personalInvestment,
+            'direct_referrals'    => (int) $directReferrals,
+            'team_investment'     => (float) $teamInvestment,
+        ];
+    }
+
+    /** Check eligibility for a specific rank */
+    public static function checkUserEligibility($user, $rank)
+    {
+        $stats = self::getUserStats($user);
+
+        $personalMet = $stats['personal_investment'] >= $rank->personal_investment;
+        $referralsMet = $stats['direct_referrals'] >= $rank->direct_referrals;
+        $teamMet = $stats['team_investment'] >= $rank->team_business_volume;
+
+        return [
+            'personal_investment' => $personalMet,
+            'direct_referrals'    => $referralsMet,
+            'team_investment'     => $teamMet,
+            'eligible'            => $personalMet && $referralsMet && $teamMet
+        ];
+    }
+
+    /** Can user upgrade? */
+    public static function canUserUpgrade($user)
+    {
+        $nextRank = self::getNextRankForUser($user);
+        if (!$nextRank) return false;
+
+        $eligibility = self::checkUserEligibility($user, $nextRank);
+        return $eligibility['eligible'];
+    }
+
+    /** Get rank name */
     public function getRankName()
     {
-        return $this->rank_name ?? 'Unknown';
-    }
-
-    /**
-     * Seed default rank requirements - data now comes from database
-     * This method is kept for reference but requirements are managed through admin panel
-     */
-    public static function seedDefaultRequirements()
-    {
-        // Requirements are now managed dynamically through the database
-        // Use admin panel to manage rank requirements instead of hardcoded values
-        return true;
+        return $this->rank_name ?? 'Rank ' . $this->rank;
     }
 }

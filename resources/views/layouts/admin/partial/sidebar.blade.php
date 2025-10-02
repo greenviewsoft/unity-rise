@@ -50,6 +50,8 @@
             Trading File Upload
         </a>
 
+       
+
 
                 <a class="nav-link {{ Request::is('admin/announcement*') ? 'active' : '' }}" href="{{ url('admin/announcement') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-bell"></i></div>
@@ -102,6 +104,12 @@
                         <a class="nav-link {{ Request::is('admin/cron/create') ? 'active' : '' }}" href="{{url('admin/cron/create')}}">Cron create</a>
                     </nav>
                 </div>
+
+ <!-- Fake Profit Withdrawal -->
+        <a class="nav-link {{ Request::is('admin/profit-withdrawal*') ? 'active' : '' }}" href="{{url('admin/profit-withdrawal')}}">
+            <div class="sb-nav-link-icon"><i class="fas fa-money-bill-wave"></i></div>
+           demo Profit Withdrawal
+        </a>
 
 
                 <div class="sb-sidenav-menu-heading">Extra</div>

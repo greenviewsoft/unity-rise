@@ -49,8 +49,8 @@
                                 <p><strong>Withdraw Amount:</strong> {{ $withdraw->amount }} USDT</p>
                                 <p><strong>Withdraw Account:</strong> {{ $withdraw->txaddress }}</p>
                                 <p><strong>Withdraw Txhash:</strong> {{ $withdraw->txid }}</p>
-                                <p><strong>User phone:</strong> {{ $user->phone }}</p>
-                                <p><strong>User Username:</strong> {{ $user->username }}</p>
+                                <p><strong>User phone:</strong> {{ $user->phone ?? 'N/A' }}</p>
+                                <p><strong>User Username:</strong> {{ $user->username ?? 'N/A' }}</p>
 
                                 <p><strong>Withdraw Status:</strong>
                                     @if (isset($data->contractRet))

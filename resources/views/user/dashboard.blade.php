@@ -986,70 +986,27 @@ body {
          </a>
       </div>
    </div> --}}
+
+    <!-- Profit Withdrawal -->
    <div class="content profit-list-users">
       <div class="title">
-         <h2>{{ __('lang.profit_withdraw') }}</h2>
+         <h2>Profit Withdrawal</h2>
          <div class="slider">
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
+            @forelse($profitwithdraws as $withdrawal)
+               <div class="user_profit_area card card-style">
+                  <div class="user-icon">
+                     <i class="bi bi-person-circle"></i>
+                  </div>
+                  <span><b>{{ substr($withdrawal->username, 0, 2) }}******{{ substr($withdrawal->username, -2) }}</b> earn <b>${{ number_format($withdrawal->amount, 2) }}</b></span>
                </div>
-               <span><b>26******pj</b> earn <b>$481.83</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
+            @empty
+               <div class="user_profit_area card card-style">
+                  <div class="user-icon">
+                     <i class="bi bi-person-circle"></i>
+                  </div>
+                  <span><b>No profit withdrawals yet</b></span>
                </div>
-               <span><b>pb******n2</b> earn <b>$3649.68</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>ge******9r</b> earn <b>$4401.44</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>bh******wr</b> earn <b>$1125.68</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>43******0q</b> earn <b>$1261.63</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>ws******0f</b> earn <b>$45.00</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>kc******7f</b> earn <b>$101.24</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>7b******lj</b> earn <b>$646.7</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>jd******4t</b> earn <b>$80.44</b></span>
-            </div>
-            <div class="user_profit_area card card-style">
-               <div class="user-icon">
-                  <i class="bi bi-person-circle"></i>
-               </div>
-               <span><b>qn******gq</b> earn <b>$100.00</b></span>
-            </div>
+            @endforelse
          </div>
       </div>
    </div>

@@ -361,12 +361,14 @@ class PageController extends Controller
 
     public function rule()
     {
-        return view('user.rule');
+        $sitesetting = Sitesetting::find(1);
+        return view('user.rule', compact('sitesetting'));
     }
 
     public function promotion()
     {
-        return view('user.promotion');
+        $sitesetting = Sitesetting::find(1);
+        return view('user.promotion', compact('sitesetting'));
     }
 
     public function news()

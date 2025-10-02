@@ -174,6 +174,9 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::resource('trading-history', 'TradingHistoryController');
     Route::post('trading-history/{tradingHistory}/toggle', 'TradingHistoryController@toggleStatus')->name('trading-history.toggle');
   
+    // Profit Withdrawal Management Routes
+    Route::resource('profit-withdrawal', 'ProfitWithdrawalController');
+    
     // Delete routes for commission management
     Route::get('investment-plans/delete/{id}', 'InvestmentPlanController@delete');
     Route::get('rank-rewards/delete/{id}', 'RankRewardController@delete');
@@ -239,15 +242,12 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('investment/active', 'InvestmentController@active')->name('investment.active');
     Route::post('investment/distribute-profit', 'InvestmentController@distributeDailyProfit')->name('investment.distribute');
     
-    // Rank requirements page
-    Route::get('rank/requirements', 'DashboardController@rankRequirements')->name('rank.requirements');
-    Route::post('rank/upgrade', 'DashboardController@upgradeRank')->name('rank.upgrade');
-    
-    // Rank upgrade management routes
-    Route::get('rank/upgrade-center', 'RankUpgradeController@index')->name('rank.upgrade-center');
-    Route::get('rank/check-eligibility', 'RankUpgradeController@checkEligibility')->name('rank.check-eligibility');
-    Route::post('rank/claim-upgrade', 'RankUpgradeController@claimUpgrade')->name('rank.claim-upgrade');
-    Route::get('rank/history', 'RankUpgradeController@history')->name('rank.history');
+    // Simple Rank Management Routes (Clean MVC Pattern)
+    Route::get('rank/requirements', 'RankController@requirements')->name('rank.requirements');
+    Route::get('rank/upgrade-center', 'RankController@upgradeCenter')->name('rank.upgrade-center');
+    Route::post('rank/upgrade', 'RankController@upgrade')->name('rank.upgrade');
+    Route::get('rank/history', 'RankController@history')->name('rank.history');
+    Route::get('rank/data', 'RankController@getUserRankData')->name('rank.data');
 });
 
 // cache clear

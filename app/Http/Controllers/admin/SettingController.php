@@ -171,6 +171,29 @@ class SettingController extends Controller
             $svl = $sitesetting->logo;
         }
 
+        if ($request->hasFile('promotion_image')) {
+            $promotion_image = $request->file('promotion_image');
+            $promotion_filename = time() . '_promotion.' . $promotion_image->getClientOriginalExtension();
+            $promotion_image->move(public_path('uploads'), $promotion_filename);
+            $promotion_path = 'uploads/' . $promotion_filename;
+        } else {
+            $promotion_path = $sitesetting->promotion_image;
+        }
+
+        if ($request->hasFile('about_image')) {
+            $about_image = $request->file('about_image');
+            $about_filename = time() . '_about.' . $about_image->getClientOriginalExtension();
+            $about_image->move(public_path('uploads'), $about_filename);
+            $about_path = 'uploads/' . $about_filename;
+        }
+
+        if ($request->hasFile('rule_image')) {
+            $rule_image = $request->file('rule_image');
+            $rule_filename = time() . '_rule.' . $rule_image->getClientOriginalExtension();
+            $rule_image->move(public_path('uploads'), $rule_filename);
+            $rule_path = 'uploads/' . $rule_filename;
+        }
+
         $sitesetting = Sitesetting::find(1);
         $sitesetting->name = $request->name;
         $sitesetting->title = $request->title;
@@ -181,12 +204,25 @@ class SettingController extends Controller
         $sitesetting->site_location = $request->site_location;
         $sitesetting->logo = $svl;
         $sitesetting->support_url = $request->support_url;
-        $sitesetting->development = $request->development;
+        $sitesetting->development = $request->development === 'true' ? 1 : 0;
 
         $sitesetting->accumulated_profite = $request->accumulated_profite;
         $sitesetting->accumulated_usd = $request->accumulated_usd;
         $sitesetting->membership = $request->membership;
         $sitesetting->membership_usd = $request->membership_usd;
+        $sitesetting->rule_content = $request->rule_content;
+        $sitesetting->about_content = $request->about_content;
+        $sitesetting->promotion_content = $request->promotion_content;
+        $sitesetting->promotion_image = $promotion_path;
+        
+        if (isset($about_path)) {
+            $sitesetting->about_image = $about_path;
+        }
+        
+        if (isset($rule_path)) {
+            $sitesetting->rule_image = $rule_path;
+        }
+        
         $sitesetting->save();
 
 

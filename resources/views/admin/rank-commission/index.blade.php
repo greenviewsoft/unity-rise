@@ -158,7 +158,7 @@
                             <div class="col">
                                 <h4 class="card-title mb-0">
                                     <i class="fas fa-table me-2"></i>
-                                    All Commission Levels
+                                    All Commission Levels XX
                                 </h4>
                                 <p class="mb-0 opacity-75">Complete list of all commission levels with individual edit access</p>
                             </div>
