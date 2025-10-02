@@ -13,40 +13,40 @@ class ProfileController extends Controller
     /**
      * Upload profile image
      */
-    public function uploadPhoto(Request $request)
-    {
-        $request->validate([
-            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
-        ]);
+   public function uploadPhoto(Request $request)
+{
+    $request->validate([
+        'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+    ]);
 
-        $user = Auth::user();
-        
-        // Create uploads/profile directory if it doesn't exist
-        $uploadPath = public_path('uploads/profile');
-        if (!File::exists($uploadPath)) {
-            File::makeDirectory($uploadPath, 0755, true);
-        }
-
-        // Delete old photo if exists
-        if ($user->photo && File::exists(public_path('uploads/profile/' . $user->photo))) {
-            File::delete(public_path('uploads/profile/' . $user->photo));
-        }
-
-        // Upload new photo
+    $user = Auth::user();
+    
+    // Delete old photo if exists
+    if ($user->photo && file_exists(public_path('uploads/profile/' . $user->photo))) {
+        unlink(public_path('uploads/profile/' . $user->photo));
+    }
+    
+    // Upload new photo
+    if ($request->hasFile('photo')) {
         $photo = $request->file('photo');
         $filename = time() . '_' . $user->id . '.' . $photo->getClientOriginalExtension();
-        $photo->move($uploadPath, $filename);
-
-        // Update user photo in database
-        $user->update(['photo' => $filename]);
-
+        $photo->move(public_path('uploads/profile'), $filename);
+        
+        $user->photo = $filename;
+        $user->save();
+        
         return response()->json([
             'success' => true,
-            'message' => 'Profile photo updated successfully!',
+            'message' => 'Photo uploaded successfully!',
             'photo_url' => asset('uploads/profile/' . $filename)
         ]);
     }
-
+    
+    return response()->json([
+        'success' => false,
+        'message' => 'Upload failed'
+    ], 400);
+}
     /**
      * Remove profile photo
      */

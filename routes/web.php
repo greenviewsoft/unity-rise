@@ -225,6 +225,11 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('checkdepo', 'PageController@checkDepo');
     
 
+  
+    // Profile Image Upload Routes
+    Route::post('profile/upload-photo', 'ProfileController@uploadPhoto')->name('profile.upload-photo');
+    Route::delete('profile/remove-photo', 'ProfileController@removePhoto')->name('profile.remove-photo');
+
     //post controller 
     Route::get('password-update', 'PostController@passwordUpdate');
     Route::get('deposite-address', 'PostController@depositeAddress');
@@ -248,10 +253,7 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::post('rank/upgrade', 'RankController@upgrade')->name('rank.upgrade');
     Route::get('rank/history', 'RankController@history')->name('rank.history');
     Route::get('rank/data', 'RankController@getUserRankData')->name('rank.data');
-    
-    // Profile Image Upload Routes
-    Route::post('profile/upload-photo', 'ProfileController@uploadPhoto')->name('profile.upload-photo');
-    Route::delete('profile/remove-photo', 'ProfileController@removePhoto')->name('profile.remove-photo');
+  
 });
 
 // cache clear
