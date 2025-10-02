@@ -22,7 +22,7 @@ class EventServiceProvider extends ServiceProvider
             SendEmailVerificationNotification::class,
         ],
         InvestmentCreated::class => [
-            InvestmentRankUpgradeListener::class,
+           // InvestmentRankUpgradeListener::class,
             ClearTeamBusinessVolumeCache::class,
         ],
     ];

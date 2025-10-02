@@ -30,83 +30,79 @@ class InvestmentController extends Controller
     /**
      * Store a new investment
      */
-    public function invest(Request $request)
-    {
-        $request->validate([
-            'plan_id' => 'required|exists:investment_plans,id',
-            'amount' => 'required|numeric|min:1',
-            'plan_type' => 'required|string'
+    
+public function invest(Request $request)
+{
+    $request->validate([
+        'plan_id' => 'required|exists:investment_plans,id',
+        'amount' => 'required|numeric|min:1',
+        'plan_type' => 'required|string'
+    ]);
+
+    $user = Auth::user();
+    $amount = $request->amount;
+    
+    // Get the selected investment plan
+    $plan = InvestmentPlan::findOrFail($request->plan_id);
+    
+    // Validate plan is active
+    if ($plan->status != 1) {
+        return back()->with('error', 'Selected investment plan is not available.');
+    }
+    
+    // Validate amount is within plan limits
+    if ($amount < $plan->min_amount || $amount > $plan->max_amount) {
+        return back()->with('error', 'Investment amount must be between $' . number_format($plan->min_amount) . ' and $' . number_format($plan->max_amount) . '.');
+    }
+
+    // Check if user has sufficient balance
+    if ($user->balance < $amount) {
+        return back()->with('error', 'Insufficient balance for this investment.');
+    }
+
+    try {
+        DB::beginTransaction();
+
+        // Deduct amount from user balance
+        $user->decrement('balance', $amount);
+        
+        // Calculate daily profit based on plan
+        $dailyProfitRate = $plan->daily_profit_percentage / 100;
+        $dailyProfit = $amount * $dailyProfitRate;
+
+        // Create investment record
+        $investment = Investment::create([
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'plan_type' => $request->plan_type,
+            'plan_id' => $plan->id,
+            'start_date' => Carbon::now(),
+            'daily_profit' => $dailyProfit,
+            'total_profit' => 0,
+            'status' => Investment::STATUS_ACTIVE,
+            'profit_days_completed' => 0
         ]);
 
-        $user = Auth::user();
-        $amount = $request->amount;
+        // Distribute referral commissions
+        $commissionService = new ReferralCommissionService();
+        $commissionService->distributeCommissions($investment);
+
+        DB::commit();
+
+        return back()->with('success', 'Investment of $' . number_format($amount, 2) . ' in ' . $plan->name . ' has been successfully created!');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Investment creation failed: '.$e->getMessage());
         
-        // Get the selected investment plan
-        $plan = InvestmentPlan::findOrFail($request->plan_id);
-        
-        // Validate plan is active
-        if ($plan->status != 1) {
-            return back()->with('error', 'Selected investment plan is not available.');
+        if(config('app.debug')){
+            return back()->with('error', 'Investment failed: '.$e->getMessage());
         }
-        
-        // Validate amount is within plan limits
-        if ($amount < $plan->min_amount || $amount > $plan->max_amount) {
-            return back()->with('error', 'Investment amount must be between $' . number_format($plan->min_amount) . ' and $' . number_format($plan->max_amount) . '.');
-        }
-
-        // Check if user has sufficient balance
-        if ($user->balance < $amount) {
-            return back()->with('error', 'Insufficient balance for this investment.');
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // Deduct amount from user balance
-            $previousBalance = $user->balance;
-            $user->decrement('balance', $amount);
-            $newBalance = $user->fresh()->balance;
-            
-            // Calculate daily profit based on plan
-            $dailyProfitRate = $plan->daily_profit_percentage / 100;
-            $dailyProfit = $amount * $dailyProfitRate;
-
-            // Create investment record
-            $investment = Investment::create([
-                'user_id' => $user->id,
-                'amount' => $amount,
-                'plan_type' => $request->plan_type,
-                'plan_id' => $plan->id,
-                'start_date' => Carbon::now(),
-                'daily_profit' => $dailyProfit,
-                'total_profit' => 0,
-                'status' => Investment::STATUS_ACTIVE,
-                'profit_days_completed' => 0
-            ]);
-
-            // Process referral commissions using service
-            $commissionService = new ReferralCommissionService();
-            $commissionService->distributeCommissions($investment);
-
-            // Note: Rank upgrades are now manual only - users must claim via Rank Upgrade Center
-
-            DB::commit();
-
-            return back()->with('success', 'Investment of $' . number_format($amount, 2) . ' in ' . $plan->name . ' has been successfully created!');
-
-        } catch (\Exception $e) {
-    DB::rollBack();
-    // Log the actual error for debugging
-    \Log::error('Investment creation failed: '.$e->getMessage(), [
-        'trace' => $e->getTraceAsString()
-    ]);
-    // Optional: show the error message in development
-    if(config('app.debug')){
-        return back()->with('error', 'Investment failed: '.$e->getMessage());
+        return back()->with('error', 'Investment failed. Please try again.');
     }
-    return back()->with('error', 'Investment failed. Please try again.');
 }
-    }
+
+
 
     /**
      * Calculate and distribute daily profits
