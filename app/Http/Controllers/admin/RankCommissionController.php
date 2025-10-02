@@ -4,6 +4,7 @@ namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ReferralCommissionLevel;
+use App\Models\RankRequirement;
 use Illuminate\Http\Request;
 
 class RankCommissionController extends Controller
@@ -16,24 +17,14 @@ class RankCommissionController extends Controller
         // Get all rank commission data
         $rankCommissionData = [];
         
-        // Define rank names
-        $rankNames = [
-            1 => 'Rookie',
-            2 => 'Bronze', 
-            3 => 'Silver',
-            4 => 'Gold',
-            5 => 'Platinum',
-            6 => 'Diamond',
-            7 => 'Master',
-            8 => 'Grand Master',
-            9 => 'Champion',
-            10 => 'Legend',
-            11 => 'Mythic',
-            12 => 'Immortal'
-        ];
+        // Get all rank requirements with reward amounts
+        $rankRequirements = RankRequirement::where('is_active', true)
+            ->orderBy('rank')
+            ->get()
+            ->keyBy('rank');
         
         // Get commission data for each rank
-        for ($rank = 1; $rank <= 12; $rank++) {
+        foreach ($rankRequirements as $rank => $requirement) {
             $commissionLevels = ReferralCommissionLevel::where('rank_id', $rank)
                 ->where('is_active', true)
                 ->orderBy('level')
@@ -46,16 +37,18 @@ class RankCommissionController extends Controller
                 
                 $rankCommissionData[$rank] = [
                     'rank_id' => $rank,
-                    'rank_name' => $rankNames[$rank],
+                    'rank_name' => $requirement->rank_name,
                     'total_levels' => $totalLevels,
                     'max_rate' => $maxRate,
                     'min_rate' => $minRate,
+                    'reward_amount' => $requirement->reward_amount,
+                    'requirement' => $requirement, // Add full requirement object
                     'levels' => $commissionLevels
                 ];
             }
         }
         
-        return view('admin.rank-commission.index', compact('rankCommissionData', 'rankNames'));
+        return view('admin.rank-commission.index', compact('rankCommissionData'));
     }
     
     /**
@@ -63,25 +56,19 @@ class RankCommissionController extends Controller
      */
     public function edit($id)
     {
+        // Get the commission level
         $commissionLevel = ReferralCommissionLevel::findOrFail($id);
         
-        // Define rank names
-        $rankNames = [
-            1 => 'Rookie',
-            2 => 'Bronze', 
-            3 => 'Silver',
-            4 => 'Gold',
-            5 => 'Platinum',
-            6 => 'Diamond',
-            7 => 'Master',
-            8 => 'Grand Master',
-            9 => 'Champion',
-            10 => 'Legend',
-            11 => 'Mythic',
-            12 => 'Immortal'
-        ];
+        // Get rank requirement for this rank
+        $rankRequirement = RankRequirement::where('rank', $commissionLevel->rank_id)->first();
         
-        return view('admin.rank-commission.edit', compact('commissionLevel', 'rankNames'));
+        // Check if rank requirement exists
+        if (!$rankRequirement) {
+            return redirect()->route('admin.rankcommission.index')
+                ->with('error', 'Rank requirement not found for this commission level. Please check your database.');
+        }
+        
+        return view('admin.rank-commission.edit', compact('commissionLevel', 'rankRequirement'));
     }
     
     /**
@@ -89,34 +76,52 @@ class RankCommissionController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // Validation rules
         $request->validate([
             'commission_rate' => 'required|numeric|min:0|max:100',
-            'rank_reward' => 'nullable|numeric|min:0',
-            'is_active' => 'boolean'
+            'rank_reward' => 'required|numeric|min:0',
+            'is_active' => 'nullable|boolean'
         ]);
         
+        // Find commission level
         $commissionLevel = ReferralCommissionLevel::findOrFail($id);
         
         // Additional validation
         if ($request->commission_rate < 0 || $request->commission_rate > 100) {
             return redirect()->back()
-                           ->withErrors(['commission_rate' => 'Commission rate must be between 0 and 100'])
-                           ->withInput();
+                ->withErrors(['commission_rate' => 'Commission rate must be between 0 and 100'])
+                ->withInput();
         }
         
-        if ($request->rank_reward && $request->rank_reward < 0) {
+        if ($request->rank_reward < 0) {
             return redirect()->back()
-                           ->withErrors(['rank_reward' => 'Rank reward must be positive'])
-                           ->withInput();
+                ->withErrors(['rank_reward' => 'Rank reward must be a positive number'])
+                ->withInput();
         }
         
-        $commissionLevel->update([
-            'commission_rate' => $request->commission_rate,
-            'rank_reward' => $request->rank_reward ?? 0,
-            'is_active' => $request->has('is_active') ? 1 : 0
-        ]);
-        
-        return redirect()->route('admin.rankcommission.index')
-                        ->with('success', 'Commission level updated successfully!');
+        try {
+            // Update commission level (commission_rate and is_active)
+            $commissionLevel->update([
+                'commission_rate' => $request->commission_rate,
+                'is_active' => $request->has('is_active') ? 1 : 0
+            ]);
+            
+            // Update rank requirement (reward_amount)
+            $rankRequirement = RankRequirement::where('rank', $commissionLevel->rank_id)->first();
+            
+            if ($rankRequirement) {
+                $rankRequirement->update([
+                    'reward_amount' => $request->rank_reward
+                ]);
+            }
+            
+            return redirect()->route('admin.rankcommission.index')
+                ->with('success', 'Commission level and rank reward updated successfully!');
+                
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Error updating commission: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 }
