@@ -24,6 +24,7 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+         \App\Http\Middleware\SecureGate::class,
     ];
 
     /**
@@ -70,6 +71,7 @@ class Kernel extends HttpKernel
         'loginck' => LoginCheck::class,
         'admin' => AdminMiddleware::class,
         'user' => UserMiddleware::class,
-        "Language"=>\App\Http\Middleware\Language::class
+        "Language"=>\App\Http\Middleware\Language::class,
+        //'secure.gate' => \App\Http\Middleware\SecureGate::class,
     ];
 }
