@@ -558,6 +558,51 @@ body {
     color: var(--text-primary);
     margin: 0;
 }
+
+/* Profile Photo Styles */
+.profile-photo-section {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-photo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-purple);
+    transition: all 0.3s ease;
+}
+
+.photo-upload-overlay {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: var(--primary-purple);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid var(--bg-dark);
+}
+
+.photo-upload-overlay:hover {
+    background: var(--secondary-purple);
+    transform: scale(1.1);
+}
+
+.photo-upload-overlay i {
+    font-size: 10px;
+    color: white;
+}
+
+#photoInput {
+    display: none;
+}
 </style>
 @endsection
 @section('content')
@@ -595,8 +640,15 @@ body {
       <div class="content">
          <a href="{{ url('user/history') }}" class="d-flex py-1">
             <div class="align-self-center">
-               <div class="logo">
-                  <img src="{{ asset('public/assets/user/images/') }}/logo.png" alt="logo">
+               <div class="profile-photo-section">
+                  @if(Auth::user()->photo && file_exists(public_path('uploads/profile/' . Auth::user()->photo)))
+                     <img src="{{ asset('uploads/profile/' . Auth::user()->photo) }}" alt="Profile Photo" class="profile-photo" id="profilePhotoDisplay">
+                  @else
+                     <img src="{{ asset('public/assets/user/images/logo.png') }}" alt="Default Avatar" class="profile-photo" id="profilePhotoDisplay">
+                  @endif
+                  <div class="photo-upload-overlay" onclick="document.getElementById('photoInput').click()">
+                     <i class="bi bi-camera-fill"></i>
+                  </div>
                </div>
             </div>
             
@@ -1052,18 +1104,68 @@ body {
    <div class="gap-tool"></div>
 </div>
 
-
-
-
-
-
-
+<!-- Hidden File Input for Photo Upload -->
+<input type="file" id="photoInput" accept="image/*" style="display: none;">
 
 @endsection
 @section('js')
 <script>
 $(document).ready(function() {
-    // Other dashboard functionality can be added here
+    // Profile photo upload functionality
+    $('#photoInput').on('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+            
+            // Validate file size (2MB max)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size must be less than 2MB.');
+                return;
+            }
+            
+            // Create FormData
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('_token', '{{ csrf_token() }}');
+            
+            // Show loading state
+            const overlay = $('.photo-upload-overlay');
+            overlay.html('<i class="bi bi-hourglass-split"></i>');
+            
+            // Upload photo
+            $.ajax({
+                url: '{{ route("user.profile.upload-photo") }}',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        // Update profile photo
+                        $('#profilePhotoDisplay').attr('src', response.photo_url);
+                        alert(response.message);
+                    } else {
+                        alert('Upload failed. Please try again.');
+                    }
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Upload failed. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        errorMessage = Object.values(xhr.responseJSON.errors)[0][0];
+                    }
+                    alert(errorMessage);
+                },
+                complete: function() {
+                    // Restore camera icon
+                    overlay.html('<i class="bi bi-camera-fill"></i>');
+                }
+            });
+        }
+    });
 });
 </script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.css" rel="stylesheet" />

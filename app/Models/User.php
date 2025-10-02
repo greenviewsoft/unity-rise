@@ -30,7 +30,8 @@ class User extends Authenticatable
         'status',
         'wallet_address',
         'wallet_private_key',
-        'rank_upgraded_at'
+        'rank_upgraded_at',
+        'photo',
     ];
 
     protected $hidden = [
@@ -208,7 +209,6 @@ public function getTeamBusinessVolume()
                                  ->where('status', 'active')
                                  ->sum('amount');
 }
-
 
     
 }
