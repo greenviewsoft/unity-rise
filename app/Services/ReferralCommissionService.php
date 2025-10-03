@@ -15,60 +15,64 @@ class ReferralCommissionService
     /**
      * Distribute commissions for an investment
      */
-    public function distributeCommissions(Investment $investment)
-    {
-        $investor = $investment->user;
-        $investmentAmount = $investment->amount;
+   public function distributeCommissions(Investment $investment)
+{
+    $investor = $investment->user;
+    $investmentAmount = $investment->amount;
 
-        Log::info("Starting commission distribution for investment ID: {$investment->id}, Amount: {$investmentAmount}");
+    Log::info("Starting commission distribution for investment ID: {$investment->id}, Amount: {$investmentAmount}");
 
-        if (!$investor->refer_id) {
-            Log::info("No referrer found for user {$investor->id}");
-            return;
-        }
+    if (!$investor->refer_id) {
+        Log::info("No referrer found for user {$investor->id}");
+        return;
+    }
 
-        DB::beginTransaction();
-        try {
-            $currentUser = $investor;
-            $level = 1;
+    DB::beginTransaction();
+    try {
+        $currentUser = $investor;
+        $level = 1;
 
-            // Max 40 levels for safety
-            while ($currentUser->refer_id && $level <= 40) {
-                $referrer = User::find($currentUser->refer_id);
-                if (!$referrer) break;
-
-                $referrerRank = $referrer->rank ?? 1;
-
-                // Get max levels for referrer's rank
-                $maxLevels = $this->getMaxLevelsForRank($referrerRank);
-
-                // Only pay commission if level <= maxLevels
-                if ($level <= $maxLevels) {
-                    $commissionData = ReferralCommissionLevel::where('rank_id', $referrerRank)
-                        ->where('level', $level)
-                        ->where('is_active', 1)
-                        ->first();
-
-                    if ($commissionData && $commissionData->commission_rate > 0) {
-                        $commissionAmount = ($investmentAmount * $commissionData->commission_rate) / 100;
-
-                        $this->createCommissionRecord($referrer, $investor, $investment, $commissionAmount, $level, $commissionData);
-
-                        Log::info("Commission paid to user {$referrer->id} (Rank {$referrerRank}, Level {$level}) Amount: {$commissionAmount}");
-                    }
-                }
-
-                $currentUser = $referrer;
-                $level++;
+        // ✅ FIX: Maximum 40 levels loop
+        while ($currentUser->refer_id && $level <= 40) {
+            $referrer = User::find($currentUser->refer_id);
+            
+            if (!$referrer) {
+                Log::info("Referrer not found at level {$level}");
+                break;
             }
 
-            DB::commit();
-            Log::info("Commission distribution completed for investment ID: {$investment->id}");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Commission distribution failed: {$e->getMessage()}");
+            $referrerRank = $referrer->rank ?? 1;
+            
+            // ✅ Get commission data for this level and rank
+            $commissionData = ReferralCommissionLevel::where('rank_id', $referrerRank)
+                ->where('level', $level)
+                ->where('is_active', 1)
+                ->first();
+
+            // ✅ FIX: Pay commission if data exists, regardless of maxLevels
+            if ($commissionData && $commissionData->commission_rate > 0) {
+                $commissionAmount = ($investmentAmount * $commissionData->commission_rate) / 100;
+
+                $this->createCommissionRecord($referrer, $investor, $investment, $commissionAmount, $level, $commissionData);
+
+                Log::info("✅ Commission paid to user {$referrer->id} (Rank {$referrerRank}, Level {$level}) Amount: {$commissionAmount}");
+            } else {
+                Log::info("⚠️ No commission rule for Rank {$referrerRank}, Level {$level}");
+            }
+
+            // ✅ Move to next level
+            $currentUser = $referrer;
+            $level++;
         }
+
+        DB::commit();
+        Log::info("✅ Commission distribution completed for investment ID: {$investment->id}");
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("❌ Commission distribution failed: {$e->getMessage()}");
     }
+}
 
     /**
      * Get maximum levels for a specific rank
