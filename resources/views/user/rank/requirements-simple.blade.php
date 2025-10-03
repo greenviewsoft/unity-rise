@@ -221,13 +221,7 @@
                             <span>Complete all requirements above to maintain your {{ $current_rank_name ?? 'current rank' }} status!</span>
                         </div>
                         @if($next_rank_name)
-                        <div class="next-rank-info mt-3">
-                            <p class="text-muted">Want to advance to {{ $next_rank_name }}?</p>
-                            <a href="{{ route('user.rank.upgrade') }}" class="btn btn-outline-primary">
-                                <i class="bi bi-arrow-up-circle"></i>
-                                View Next Rank Requirements
-                            </a>
-                        </div>
+                       
                         @endif
                     </div>
                     @endif

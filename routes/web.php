@@ -107,15 +107,9 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::post('deposite/store', 'TransactionController@depositeStore');
     Route::get('deposit/details/{id}', 'TransactionController@depositDetails');
     Route::get('deposit/delete/{id}', 'TransactionController@depositDelete');
-    Route::get('refergift/delete/{id}', 'RefergiftController@delete');
-
     //all delete
     Route::get('announcement/delete/{id}', 'AnnouncementController@delete');
-    Route::get('product/delete/{id}', 'ProductController@delete');
     Route::get('lang/delete/{id}', 'LangController@delete');
-    Route::get('vip/delete/{id}', 'VipController@delete');
-    Route::get('product/delete/{id}', 'ProductController@delete');
-    Route::get('energy/delete/{id}', 'EnergyController@delete');
     Route::get('events/delete/{id}', 'EventController@delete');
     Route::get('cron/delete/{id}', 'CronController@delete');
 
@@ -136,12 +130,7 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::resource('user', 'UserController');
 
     Route::resource('announcement', 'AnnouncementController');
-    Route::resource('settingtrx', 'SettingtrxController');
-    Route::resource('vip', 'VipController');
-    Route::resource('product', 'ProductController');
-    Route::resource('energy', 'EnergyController');
     Route::resource('events', 'EventController');
-    Route::resource('refergift', 'RefergiftController');
     Route::resource('cron', 'CronController');
     
     // Commission Management Routes
