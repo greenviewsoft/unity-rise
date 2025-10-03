@@ -573,17 +573,19 @@ public function team()
 /**
  * Calculate the level of a user in relation to the current user
  */
-private function calculateUserLevel($currentUser, $targetUser)
+public function calculateUserLevel($rootUser, $downlineUser)
 {
-    $level = 1;
-    $uplineUser = $targetUser->referrer;
+    // যদি rootUser == downlineUser return 0;
+    if($rootUser->id == $downlineUser->id) return 1; // root = level 1
 
-    while ($uplineUser && $uplineUser->id !== $currentUser->id && $level <= 10) {
+    $level = 1;
+    $current = $downlineUser;
+    while($current->refer_id != $rootUser->id && $current->refer_id != null){
+        $current = User::find($current->refer_id);
         $level++;
-        $uplineUser = $uplineUser->referrer;
     }
 
-    return $uplineUser && $uplineUser->id === $currentUser->id ? $level : 0;
+    return $level;
 }
 
 /**
