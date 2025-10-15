@@ -18,9 +18,17 @@ class Kernel extends ConsoleKernel
         // BEP20 USDT Deposit Processing - Every 5 minutes
         $schedule->command('deposits:process-bep20')->everyFiveMinutes();
         
-        // Investment profit distribution (Monday to Friday at 9:00 AM)
-        $schedule->command('investment:distribute-profit')->dailyAt('09:00')->weekdays();
+        // Investment profit distribution (Monday to Friday)
+  $schedule->command('investment:distribute-profit')
+            ->hourly()                    // ✅ Check every hour for 24h intervals
+            ->weekdays()                  // ✅ Only Monday-Friday
+            ->withoutOverlapping()        // ✅ Prevent simultaneous runs
+            ->onOneServer()               // ✅ Run on one server (if clustered)
+            ->runInBackground();          // ✅ Don't block other tasks
         
+        // php artisan investment:distribute-profit --force  local testing profit give 
+       
+
         // BEP20 deposit monitoring - Every hour
         $schedule->command('monitor:bep20-deposits --notify-stuck')->hourly();
     }

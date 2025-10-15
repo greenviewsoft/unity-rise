@@ -4,8 +4,13 @@
             <div class="align-self-center me-auto">
                 <img src="{{ asset('public/assets/user/images/') }}/logo2.png" width="40" class="" alt="img">
                 <!--<p class="color-highlight">{{ __('lang.welcome_back') }}</p>-->
-                <h5>{{ Auth::user()->username }}</h5>
-                <strong><i class="bi bi-people"></i> <span>{{ Auth::user()->phone }}</span></strong>
+                @auth
+                    <h5>{{ Auth::user()->username }}</h5>
+                    <strong><i class="bi bi-people"></i> <span>{{ Auth::user()->phone }}</span></strong>
+                @else
+                    <h5>Guest</h5>
+                    <strong><i class="bi bi-people"></i> <span>Not logged in</span></strong>
+                @endauth
             </div>
             <div class="align-self-center ms-auto">
                 <a href="#" data-bs-toggle="dropdown" class="">
@@ -41,6 +46,11 @@
                 <div>{{ __('lang.deposit') }}</div>
                 
             </a>
+            {{-- <a href="{{ url('user/manual-deposit') }}" id="nav-manual-deposit" class="list-group-item">
+                <img class="" src="{{ asset('public/assets/user/images/') }}/piggy-bank.png" alt="manual-deposit.png">
+                <div>Manual Deposit</div>
+                
+            </a> --}}
             <a href="{{ url('user/withdraw') }}" id="nav-pages" class="list-group-item">
                 <img class="" src="{{ asset('public/assets/user/images/') }}/atm.png" alt="atm.png">
                 <div>{{ __('lang.withdraw') }}</div>
@@ -71,6 +81,11 @@
                 <img class="" src="{{ asset('public/assets/user/images/') }}/trolley.png" alt="trolley.png">
                 <div>{{ __('lang.order_history') }}</div>
                 
+            </a>
+
+            <a href="{{ route('user.investment.profit-history') }}" id="nav-profit-history" class="list-group-item">
+                <img class="" src="{{ asset('public/assets/user/images/') }}/analysis.png" alt="profit-history.png">
+                <div>Profit History</div>
             </a>
 
             <a href="{{ url('user/record?type=deposit') }}" id="nav-homes" data-submenu="sub1" class="list-group-item">

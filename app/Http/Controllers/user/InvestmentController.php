@@ -103,18 +103,17 @@ class InvestmentController extends Controller
         }
     }
 
-  /**
- * ✅ Distribute referral commissions up to 40 levels
- * Skip levels that exceed user's rank max_levels
+/**
+ * ✅ FIXED: Distribute referral commissions up to rank's max_levels
  */
 private function distributeReferralCommissions(Investment $investment)
 {
     $investor = $investment->user;
     $investmentAmount = $investment->amount;
 
-    Log::info("Starting commission distribution for Investment ID: {$investment->id}, Amount: {$investmentAmount}");
+    Log::info("=== COMMISSION DISTRIBUTION START ===");
+    Log::info("Investment ID: {$investment->id}, Amount: \${$investmentAmount}, Investor: {$investor->id}");
 
-    // Check if investor has a referrer
     if (!$investor->refer_id) {
         Log::info("No referrer found for user {$investor->id}");
         return;
@@ -122,87 +121,101 @@ private function distributeReferralCommissions(Investment $investment)
 
     $currentUser = $investor;
     $level = 1;
+    $commissionsDistributed = [];
 
-    // Loop through up to 40 levels
     while ($currentUser->refer_id && $level <= 40) {
         
-        // Get the upline/referrer
         $referrer = User::find($currentUser->refer_id);
         
         if (!$referrer) {
-            Log::info("Referrer not found at level {$level}");
-            break;
+            Log::info("Level {$level}: Referrer not found - BREAKING chain");
+            break; // ✅ Break instead of continue
         }
 
-        // Get referrer's current rank (default to 1 if null)
         $referrerRankId = $referrer->rank ?? 1;
         
-        // Get commission data for this rank and level
+        // Get rank data for max_levels check
+        $rankData = ReferralCommissionLevel::where('rank_id', $referrerRankId)
+            ->where('is_active', 1)
+            ->first();
+
+        if (!$rankData) {
+            Log::warning("Level {$level}: No rank data for Rank ID {$referrerRankId} - BREAKING chain");
+            break; // ✅ Break instead of continue
+        }
+
+        // Check if level exceeds max_levels
+        if ($level > $rankData->max_levels) {
+            Log::info("Level {$level}: User {$referrer->id} ({$rankData->rank_name}) exceeds max_levels ({$rankData->max_levels}) - SKIPPING");
+            $currentUser = $referrer;
+            $level++;
+            continue;
+        }
+
+        // Get commission rate for this exact rank + level
         $commissionData = ReferralCommissionLevel::where('rank_id', $referrerRankId)
             ->where('level', $level)
             ->where('is_active', 1)
             ->first();
 
         if (!$commissionData) {
-            Log::info("No commission rule for Rank ID {$referrerRankId}, Level {$level} - Skipping");
-            
-            // Move to next upline
+            Log::warning("Level {$level}: No commission data for Rank {$referrerRankId} at level {$level} - SKIPPING");
             $currentUser = $referrer;
             $level++;
             continue;
         }
 
-        // Check if level is within referrer's max_levels
-        if ($level > $commissionData->max_levels) {
-            Log::info("Level {$level} exceeds max_levels ({$commissionData->max_levels}) for Rank {$commissionData->rank_name} - Skipping");
-            
-            // Move to next upline
-            $currentUser = $referrer;
-            $level++;
-            continue;
-        }
-
-        // Calculate commission
-        $commissionAmount = ($investmentAmount * $commissionData->commission_rate) / 100;
-
-        if ($commissionAmount <= 0) {
-            Log::info("Commission rate is 0 for Level {$level} - Skipping");
-            
-            // Move to next upline
-            $currentUser = $referrer;
-            $level++;
-            continue;
-        }
+        $commissionRate = $commissionData->commission_rate;
+        $commissionAmount = ($investmentAmount * $commissionRate) / 100;
 
         // Create commission record
         ReferralCommission::create([
             'referrer_id' => $referrer->id,
             'referred_id' => $investor->id,
+            'investment_id' => $investment->id,
             'investment_amount' => $investmentAmount,
             'commission_amount' => $commissionAmount,
+            'commission_rate' => $commissionRate,
             'level' => $level,
-            'rank' => $referrerRankId,  // Store rank ID (1-12)
+            'rank' => $referrerRankId,
+            'rank_id' => $referrerRankId,
+            'status' => 'approved',
             'commission_date' => now()
         ]);
 
-        // Update referrer's balance and commission
-        $referrer->increment('refer_commission', $commissionAmount);
-        $referrer->increment('balance', $commissionAmount);
+        // Update referrer balance if commission > 0
+        if ($commissionAmount > 0) {
+            $referrer->increment('refer_commission', $commissionAmount);
+            $referrer->increment('balance', $commissionAmount);
 
-        // Optional: Update total_referral_earnings if column exists
-        if (Schema::hasColumn('users', 'total_referral_earnings')) {
-            $referrer->increment('total_referral_earnings', $commissionAmount);
+            if (Schema::hasColumn('users', 'total_referral_earnings')) {
+                $referrer->increment('total_referral_earnings', $commissionAmount);
+            }
+
+            $commissionsDistributed[] = [
+                'level' => $level,
+                'user_id' => $referrer->id,
+                'rank' => $rankData->rank_name,
+                'rate' => $commissionRate,
+                'amount' => $commissionAmount
+            ];
+
+            Log::info("Level {$level}: User {$referrer->id} ({$rankData->rank_name}) - Rate: {$commissionRate}% - Amount: \${$commissionAmount} ✅");
         }
 
-        Log::info("Commission paid to User {$referrer->id} (Rank: {$commissionData->rank_name}, Level {$level}): \${$commissionAmount}");
-
-        // Move to next upline
+        // Move to next level
         $currentUser = $referrer;
         $level++;
     }
 
-    Log::info("Commission distribution completed for Investment ID: {$investment->id}");
+    Log::info("=== COMMISSION DISTRIBUTION END ===");
+    Log::info("Total Levels Processed: " . ($level - 1));
+    Log::info("Commissions Paid: " . count($commissionsDistributed));
+    Log::info("Total Amount Distributed: $" . array_sum(array_column($commissionsDistributed, 'amount')));
 }
+
+
+
 
     /**
      * Calculate and distribute daily profits
@@ -328,5 +341,132 @@ private function distributeReferralCommissions(Investment $investment)
     {
         $investments = Auth::user()->investments()->active()->with('profits')->latest()->get();
         return view('user.investments.active', compact('investments'));
+    }
+
+    /**
+     * Get user's daily profit history
+     */
+    public function profitHistory(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Get date range from request or default to last 30 days
+        $startDate = $request->get('start_date', now()->subDays(30)->format('Y-m-d'));
+        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        
+        // Validate dates
+        $startDate = Carbon::parse($startDate)->format('Y-m-d');
+        $endDate = Carbon::parse($endDate)->format('Y-m-d');
+        
+        // Get daily profit history
+        $profitHistory = InvestmentProfit::where('user_id', $user->id)
+            ->whereBetween('profit_date', [$startDate, $endDate])
+            ->with(['investment.plan'])
+            ->orderBy('profit_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+        
+        // Calculate statistics
+        $totalProfits = InvestmentProfit::where('user_id', $user->id)
+            ->whereBetween('profit_date', [$startDate, $endDate])
+            ->sum('amount');
+        
+        $averageDailyProfit = InvestmentProfit::where('user_id', $user->id)
+            ->whereBetween('profit_date', [$startDate, $endDate])
+            ->avg('amount');
+        
+        $totalDays = InvestmentProfit::where('user_id', $user->id)
+            ->whereBetween('profit_date', [$startDate, $endDate])
+            ->distinct('profit_date')
+            ->count('profit_date');
+        
+        $maxDailyProfit = InvestmentProfit::where('user_id', $user->id)
+            ->whereBetween('profit_date', [$startDate, $endDate])
+            ->max('amount');
+        
+        
+        // Get profit by investment plan
+        $profitByPlan = InvestmentProfit::where('investment_profits.user_id', $user->id)
+            ->whereBetween('investment_profits.profit_date', [$startDate, $endDate])
+            ->join('investments', 'investment_profits.investment_id', '=', 'investments.id')
+            ->leftJoin('investment_plans', 'investments.plan_id', '=', 'investment_plans.id')
+            ->selectRaw('COALESCE(investment_plans.name, investments.plan_type) as plan_name, SUM(investment_profits.amount) as total_profit, COUNT(*) as profit_count')
+            ->groupBy('plan_name')
+            ->orderBy('total_profit', 'desc')
+            ->get();
+        
+        // Get recent profit trends (last 7 days)
+        $recentTrends = InvestmentProfit::where('investment_profits.user_id', $user->id)
+            ->where('investment_profits.profit_date', '>=', now()->subDays(7))
+            ->selectRaw('DATE(investment_profits.profit_date) as date, SUM(investment_profits.amount) as total_profit')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+        
+        $statistics = [
+            'total_profits' => $totalProfits,
+            'average_daily_profit' => $averageDailyProfit,
+            'total_days' => $totalDays,
+            'max_daily_profit' => $maxDailyProfit,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'profit_by_plan' => $profitByPlan,
+            'recent_trends' => $recentTrends
+        ];
+        
+        return view('user.investments.profit-history', compact('profitHistory', 'statistics'));
+    }
+
+    /**
+     * Export profit history to CSV
+     */
+    public function exportProfitHistory(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Get date range from request or default to last 30 days
+        $startDate = $request->get('start_date', now()->subDays(30)->format('Y-m-d'));
+        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        
+        // Validate dates
+        $startDate = Carbon::parse($startDate)->format('Y-m-d');
+        $endDate = Carbon::parse($endDate)->format('Y-m-d');
+        
+        // Get profit history data
+        $profitHistory = InvestmentProfit::where('investment_profits.user_id', $user->id)
+            ->whereBetween('investment_profits.profit_date', [$startDate, $endDate])
+            ->with(['investment.plan'])
+            ->orderBy('investment_profits.profit_date', 'desc')
+            ->orderBy('investment_profits.created_at', 'desc')
+            ->get();
+        
+        $filename = 'profit_history_' . $user->id . '_' . $startDate . '_to_' . $endDate . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+        
+        $callback = function() use ($profitHistory) {
+            $file = fopen('php://output', 'w');
+            
+            // Add CSV headers
+            fputcsv($file, ['Date', 'Investment ID', 'Plan Name', 'Day Number', 'Profit Amount', 'Created At']);
+            
+            foreach ($profitHistory as $profit) {
+                fputcsv($file, [
+                    $profit->profit_date,
+                    $profit->investment_id,
+                    $profit->investment->plan ? $profit->investment->plan->name : $profit->investment->plan_type,
+                    $profit->day_number,
+                    '$' . number_format($profit->amount, 2),
+                    $profit->created_at->format('Y-m-d H:i:s')
+                ]);
+            }
+            
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 }

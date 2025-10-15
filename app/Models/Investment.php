@@ -116,13 +116,13 @@ class Investment extends Model
     }
 
     /**
-     * Check if today is a profit day (Mon-Fri, no holidays)
+     * ✅ Check if today is a profit day (Mon-Fri only, no weekends)
      */
     public function isProfitDay($date = null)
     {
         $date = $date ? Carbon::parse($date) : Carbon::now();
         
-        // Check if it's Monday to Friday
+        // ✅ Check if it's Monday to Friday (weekdays only)
         return $date->isWeekday();
     }
 
@@ -161,7 +161,7 @@ class Investment extends Model
     }
 
     /**
-     * Check if investment is eligible for profit today
+     * ✅ Check if investment is eligible for profit today (Mon-Fri only)
      */
     public function canReceiveProfitToday()
     {
@@ -173,6 +173,7 @@ class Investment extends Model
             return false;
         }
 
+        // ✅ Must be a weekday (Monday-Friday)
         if (!$this->isProfitDay()) {
             return false;
         }
@@ -207,7 +208,7 @@ class Investment extends Model
     }
 
     /**
-     * Scope for investments eligible for profit today
+     * ✅ Scope for investments eligible for profit today (weekdays only)
      */
     public function scopeEligibleForProfitToday($query)
     {

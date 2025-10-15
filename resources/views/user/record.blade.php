@@ -41,8 +41,37 @@
                                 <strong>{{ $deposit->created_at }}</strong>
                             </div>
                             <div class="account-balance-info">
-                                <span class="text-success">+{{ $deposit->amount }}</span>
-                                <span>{{ __('lang.you_receive') }}: ${{ $deposit->amount }}</span>
+                                @if($deposit->status == 1)
+                                    <span class="text-success">+{{ $deposit->amount }}</span>
+                                    <span>{{ __('lang.you_receive') }}: ${{ $deposit->amount }}</span>
+                                    <div class="mt-1">
+                                        <small class="badge bg-success">Approved</small>
+                                    </div>
+                                @elseif($deposit->status == 0)
+                                    <span class="text-warning">{{ $deposit->amount }}</span>
+                                    <span>Pending approval</span>
+                                    <div class="mt-1">
+                                        <small class="badge bg-warning">Pending</small>
+                                    </div>
+                                @elseif($deposit->status == -1)
+                                    <span class="text-danger">{{ $deposit->amount }}</span>
+                                    <span>Deposit rejected</span>
+                                    <div class="mt-1">
+                                        <small class="badge bg-danger">Rejected</small>
+                                    </div>
+                                    @if($deposit->admin_notes)
+                                        <div class="mt-2 p-2 bg-light rounded">
+                                            <small class="text-muted"><strong>Admin Note:</strong></small>
+                                            <small class="d-block">{{ $deposit->admin_notes }}</small>
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="text-muted">{{ $deposit->amount }}</span>
+                                    <span>Status unknown</span>
+                                    <div class="mt-1">
+                                        <small class="badge bg-secondary">Unknown</small>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>

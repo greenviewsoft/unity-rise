@@ -14,7 +14,7 @@ use App\Models\Withdraw;
 use Illuminate\Http\Request;
 use Exception;
 use GuzzleHttp\Client;
-
+use Illuminate\Support\Facades\Auth;
 class TransactionController extends Controller
 {
     public function withdraw(Request $request){
@@ -144,12 +144,13 @@ class TransactionController extends Controller
     public function deposite(Request $request){
         $query = Deposite::query();
         
-        // Search by key (order number or txid)
+        // Search by key (order number, txid, or transaction_hash)
         if ($request->filled('key')) {
             $key = $request->key;
             $query->where(function($q) use ($key) {
                 $q->where('order_number', 'like', "%{$key}%")
-                  ->orWhere('txid', 'like', "%{$key}%");
+                  ->orWhere('txid', 'like', "%{$key}%")
+                  ->orWhere('transaction_hash', 'like', "%{$key}%");
             });
         }
         
@@ -173,6 +174,11 @@ class TransactionController extends Controller
         // Filter by currency
         if ($request->filled('currency')) {
             $query->where('currency', $request->currency);
+        }
+        
+        // Filter by deposit type
+        if ($request->filled('deposit_type')) {
+            $query->where('deposit_type', $request->deposit_type);
         }
         
         $deposites = $query->orderBy('id', 'desc')->paginate(15);
@@ -202,8 +208,10 @@ public function depositeStore(Request $request){
     $deposite = new Deposite();
     $deposite->user_id = $user->id;
     $deposite->amount = $request->amount;
-    $deposite->txid = 'demo';
-    $deposite->order_number = $orderNumber; // Add this line
+    $deposite->txid = 'Admin Added';
+    $deposite->order_number = $orderNumber;
+    $deposite->currency = 'USDT';
+    $deposite->deposit_type = 'admin'; // Mark as admin deposit
     $deposite->status = '1';
     $deposite->save();
         // Update user balance and create transaction log
@@ -223,7 +231,7 @@ public function depositeStore(Request $request){
             "Manual admin deposit for user: {$user->phone}",
             [
                 'phone' => $user->phone,
-                'txid' => 'demo',
+                'txid' => 'admin_added',
                 'payment_method' => 'manual_admin',
                 'admin_action' => true,
                  'currency' => 'USDT'
@@ -295,5 +303,108 @@ public function depositeStore(Request $request){
         }
 
         return redirect()->back()->with('success', 'Deposit deleted successfully');
+    }
+
+    public function approveManualDeposit($id)
+    {
+        $deposit = Deposite::find($id);
+        
+        if (!$deposit) {
+            return redirect()->back()->with('error', 'Deposit not found');
+        }
+        
+        if ($deposit->status == 1) {
+            return redirect()->back()->with('error', 'Deposit already approved');
+        }
+        
+        if ($deposit->deposit_type !== 'manual') {
+            return redirect()->back()->with('error', 'This is not a manual deposit');
+        }
+        
+        try {
+            $user = User::find($deposit->user_id);
+            
+            if (!$user) {
+                return redirect()->back()->with('error', 'User not found');
+            }
+            
+            // Update deposit status
+            $previousBalance = $user->balance;
+            $deposit->status = 1;
+            $deposit->approved_at = now();
+            $deposit->approved_by = Auth::id();
+            $deposit->save();
+            
+            // Update user balance
+            $user->increment('balance', $deposit->amount);
+            $newBalance = $user->fresh()->balance;
+            
+            // Create transaction log
+            \App\Models\Log::createTransactionLog(
+                $user->id,
+                'deposit',
+                $deposit->amount,
+                $previousBalance,
+                $newBalance,
+                'App\\Models\\Deposite',
+                $deposit->id,
+                "Manual deposit approved by admin. Order: {$deposit->order_number}",
+                [
+                    'phone' => $user->phone,
+                    'txid' => $deposit->transaction_hash ?: $deposit->txid,
+                    'payment_method' => 'manual_deposit',
+                    'admin_approved' => true,
+                    'currency' => $deposit->currency,
+                    'approved_by' => Auth::user()->name ?? Auth::user()->email
+                ]
+            );
+            
+            return redirect()->back()->with('success', 'Manual deposit approved successfully! User balance updated.');
+            
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Failed to approve deposit: ' . $e->getMessage());
+        }
+    }
+
+    public function rejectManualDeposit(Request $request, $id)
+    {
+        $this->validate($request, [
+            'rejection_reason' => 'required|string|max:500'
+        ]);
+        
+        $deposit = Deposite::findOrFail($id);
+        
+        // Check if deposit is manual and pending
+        if ($deposit->deposit_type !== 'manual' || $deposit->status != 0) {
+            return redirect()->back()->with('error', 'Invalid deposit for rejection.');
+        }
+        
+        // Update deposit status to rejected (-1)
+        $deposit->update([
+            'status' => -1,
+            'approved_at' => now(),
+            'approved_by' => auth()->id(),
+            'admin_notes' => 'Rejected: ' . $request->rejection_reason
+        ]);
+        
+        return redirect()->back()->with('success', 'Manual deposit rejected successfully.');
+    }
+    
+    public function viewScreenshot($id)
+    {
+        $deposit = Deposite::findOrFail($id);
+        
+        // Check if deposit is manual and has screenshot
+        if ($deposit->deposit_type !== 'manual' || !$deposit->screenshot) {
+            return redirect()->back()->with('error', 'Screenshot not available.');
+        }
+        
+        $screenshotPath = public_path($deposit->screenshot);
+        
+        if (!file_exists($screenshotPath)) {
+            return redirect()->back()->with('error', 'Screenshot file not found.');
+        }
+        
+        return response()->file($screenshotPath);
     }
 }

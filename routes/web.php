@@ -2,7 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -107,6 +108,22 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::post('deposite/store', 'TransactionController@depositeStore');
     Route::get('deposit/details/{id}', 'TransactionController@depositDetails');
     Route::get('deposit/delete/{id}', 'TransactionController@depositDelete');
+    Route::get('deposit/approve/{id}', 'TransactionController@approveManualDeposit')->name('deposit.approve');
+    Route::post('deposit/reject/{id}', 'TransactionController@rejectManualDeposit')->name('deposit.reject');
+    Route::get('deposit/screenshot/{id}', 'TransactionController@viewScreenshot')->name('deposit.screenshot');
+    
+    // BEP20 Settings Routes (Edit and View only)
+    Route::get('bep20-settings', 'Bep20SettingController@index')->name('bep20-settings.index');
+    Route::get('bep20-settings/{bep20Setting}', 'Bep20SettingController@show')->name('bep20-settings.show');
+    Route::get('bep20-settings/{bep20Setting}/edit', 'Bep20SettingController@edit')->name('bep20-settings.edit');
+    Route::put('bep20-settings/{bep20Setting}', 'Bep20SettingController@update')->name('bep20-settings.update');
+    
+    // Social Links Management
+    Route::resource('social-links', 'SocialLinkController');
+    Route::get('social-links/{socialLink}/toggle-status', 'SocialLinkController@toggleStatus')->name('social-links.toggle-status');
+    Route::delete('bep20-settings/{bep20Setting}', 'Bep20SettingController@destroy')->name('bep20-settings.destroy');
+    Route::get('bep20-settings/{bep20Setting}/delete', 'Bep20SettingController@destroy')->name('bep20-settings.delete');
+    
     //all delete
     Route::get('announcement/delete/{id}', 'AnnouncementController@delete');
     Route::get('lang/delete/{id}', 'LangController@delete');
@@ -171,6 +188,14 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::get('rank-rewards/delete/{id}', 'RankRewardController@delete');
 });
 
+// Password Reset Routes (outside user group - no authentication required)
+Route::group(['namespace' => 'App\Http\Controllers'], function () {
+    Route::get('password/request', 'Auth\ForgotPasswordController@showLinkRequestForm')->name('password.request');
+    Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')->name('password.email');
+    Route::get('password/reset/{token}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
+    Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('password.update');
+});
+
 //for user only
 Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'prefix' => 'user', 'namespace' => 'App\Http\Controllers\user'], function () {
     Route::get('dashboard', 'DashboardController@dashboard')->name('dashboard');
@@ -183,6 +208,8 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('trading-history', 'PageController@tradingHistory')->name('trading-history');
     Route::get('deposit', 'PageController@deposit')->name('deposit');
     Route::get('deposit-details', 'PageController@depositDetails');
+    Route::get('manual-deposit', 'PageController@manualDeposit')->name('manual-deposit');
+    Route::post('manual-deposit/submit', 'PostController@submitManualDeposit')->name('manual-deposit.submit');
 
     Route::get('order-grav-ruls', 'PageController@orderGrav');
     Route::get('order/grab', 'PageController@orderInfo');
@@ -223,6 +250,7 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('password-update', 'PostController@passwordUpdate');
     Route::get('deposite-address', 'PostController@depositeAddress');
     Route::post('trcaddress-update', 'PostController@trcUpdate');
+    Route::post('bep20address-update', 'PostController@bep20AddressUpdate');
     Route::post('withdraw/validate', 'PostController@withdrawVal');
 
     Route::get('deposite-information', 'PostController@depositeInformation');
@@ -230,10 +258,10 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('test-bep20', 'PostController@testBep20System');
 
     // Investment routes
-    Route::get('investment', 'InvestmentController@index')->name('investment.index');
-    Route::post('investment/create', 'InvestmentController@invest')->name('investment.create');
     Route::get('investment/history', 'InvestmentController@history')->name('investment.history');
     Route::get('investment/active', 'InvestmentController@active')->name('investment.active');
+    Route::get('investment/profit-history', 'InvestmentController@profitHistory')->name('investment.profit-history');
+    Route::get('investment/profit-history/export', 'InvestmentController@exportProfitHistory')->name('investment.profit-history.export');
     Route::post('investment/distribute-profit', 'InvestmentController@distributeDailyProfit')->name('investment.distribute');
     
     // Simple Rank Management Routes (Clean MVC Pattern)
@@ -243,6 +271,106 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('rank/history', 'RankController@history')->name('rank.history');
     Route::get('rank/data', 'RankController@getUserRankData')->name('rank.data');
   
+});
+
+
+
+Route::get('schedule-run', function (Request $request) {
+    $startedAt = microtime(true);
+
+    // Optional security: .env এ CRON_SECRET=your-long-random-token দিন
+    $expected = config('app.cron_secret', env('CRON_SECRET'));
+    $token    = (string) $request->query('token', '');
+    if ($expected && !hash_equals($expected, $token)) {
+        return response()->json([
+            'ok'    => false,
+            'error' => 'Unauthorized (invalid token)',
+            'code'  => 403,
+        ], 200); // HTTP 200 রাখছি যাতে cron "Failed" না দেখায়
+    }
+
+    $force = filter_var($request->query('force', false), FILTER_VALIDATE_BOOLEAN);
+    $date  = $request->query('date');
+
+    // চাইলে schedule:run এড়িয়েই দরকারি কমান্ডগুলো সরাসরি কল করি,
+    // যাতে টাইমিং-গেটিং এ না পড়ে ও কোন কমান্ড ফেল করেছে—স্পষ্ট ধরা যায়।
+    $commands = [
+        [
+            'label'   => 'Distribute profit',
+            'name'    => 'investment:distribute-profit',
+            'params'  => array_filter([
+                '--force' => $force ? true : null,
+                '--date'  => $date ?: null,
+            ]),
+        ],
+        [
+            'label'   => 'Process BEP20 deposits',
+            'name'    => 'deposits:process-bep20',
+            'params'  => [],
+        ],
+        [
+            'label'   => 'Monitor BEP20 stuck deposits',
+            'name'    => 'monitor:bep20-deposits',
+            'params'  => ['--notify-stuck' => true],
+        ],
+    ];
+
+    $ran   = [];
+    $ok    = true;
+
+    foreach ($commands as $c) {
+        $t0 = microtime(true);
+        try {
+            $exit = Artisan::call($c['name'], $c['params']);
+            $out  = trim(Artisan::output());
+            $ran[] = [
+                'label'       => $c['label'],
+                'command'     => $c['name'],
+                'params'      => $c['params'],
+                'exit_code'   => $exit,
+                'duration_ms' => (int) round((microtime(true) - $t0) * 1000),
+                'output'      => $out,
+            ];
+            if ($exit !== 0) $ok = false;
+        } catch (\Throwable $e) {
+            $ok = false;
+            $ran[] = [
+                'label'       => $c['label'],
+                'command'     => $c['name'],
+                'params'      => $c['params'],
+                'exit_code'   => 255,
+                'duration_ms' => (int) round((microtime(true) - $t0) * 1000),
+                'error'       => $e->getMessage(),
+            ];
+            Log::error('schedule-run error', [
+                'cmd' => $c['name'],
+                'err' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    return response()->json([
+        'ok'          => $ok,
+        'server_time' => now()->toDateTimeString(),
+        'meta'        => [
+            'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+            'ip'          => $request->ip(),
+            'ua'          => $request->userAgent(),
+            'timezone'    => config('app.timezone'),
+        ],
+        'ran'  => $ran,
+        'hint' => [
+            'force' => 'Use ?force=1 to bypass weekday/time checks',
+            'date'  => 'Use ?date=YYYY-MM-DD to run for a specific date',
+        ],
+    ], 200);
+});
+
+
+// Tempery
+Route::get('run-profit', function () {
+    Artisan::call('investment:distribute-profit', ['--force' => true]);
+    return '✅ Profit distributed manually for today!';
 });
 
 // cache clear

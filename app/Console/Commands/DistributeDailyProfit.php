@@ -12,122 +12,216 @@ use Illuminate\Support\Facades\Log;
 
 class DistributeDailyProfit extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'investment:distribute-profit';
+    protected $signature = 'investment:distribute-profit {--date=} {--force}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Distribute daily profit to active investments (Mon-Fri only)';
+    protected $description = 'Distribute profit 24 hours after investment/last profit (Mon-Fri only, skips weekends)';
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
     public function handle()
     {
-        $today = Carbon::now();
+        $date = $this->option('date') ? Carbon::parse($this->option('date')) : Carbon::now();
+        $force = $this->option('force');
         
-        // Check if today is Monday to Friday (1-5)
-        if ($today->dayOfWeek < 1 || $today->dayOfWeek > 5) {
-            $this->info('Profit distribution only runs Monday to Friday. Today is ' . $today->format('l'));
+        // ✅ Check if today is weekday (Mon-Fri) unless forced
+        if (!$date->isWeekday() && !$force) {
+            $this->warn("⏸️  Profit distribution skipped - Today is {$date->format('l')} (Weekend)");
+            $this->info("💡 Profits resume on Monday. Use --force to test anyway.");
+            Log::info('Profit distribution skipped - Weekend', [
+                'date' => $date->format('Y-m-d'),
+                'day' => $date->format('l')
+            ]);
             return 0;
         }
 
-        $this->info('Starting daily profit distribution for ' . $today->format('Y-m-d'));
+        if ($force && !$date->isWeekday()) {
+            $this->warn("⚠️  Force mode: Running on {$date->format('l')} (Weekend)");
+        }
+
+        $this->info("🚀 Starting profit distribution for {$date->format('Y-m-d l H:i')}");
+        $this->info("⏰ Distributing profits 24 hours after investment/last profit\n");
 
         try {
             DB::beginTransaction();
 
-            // Get all active investments that are eligible for profit
-            $activeInvestments = Investment::eligibleForProfitToday()->get();
+            // ✅ Get investments where 24+ hours have passed since start OR last profit
+            $activeInvestments = Investment::where('status', Investment::STATUS_ACTIVE)
+                ->where(function($query) use ($date) {
+                    // Case 1: No profits yet - 24h since investment creation
+                    $query->whereDoesntHave('profits')
+                          ->whereRaw('TIMESTAMPDIFF(HOUR, start_date, ?) >= 24', [$date->toDateTimeString()])
+                    // Case 2: Has profits - 24h since last profit
+                    ->orWhereHas('profits', function($q) use ($date) {
+                        $q->whereRaw(
+                            'TIMESTAMPDIFF(HOUR, 
+                                (SELECT MAX(created_at) FROM investment_profits WHERE investment_id = investments.id),
+                                ?
+                            ) >= 24',
+                            [$date->toDateTimeString()]
+                        );
+                    });
+                })
+                ->with(['user', 'plan'])
+                ->get();
+
+            if ($activeInvestments->isEmpty()) {
+                $this->info("✅ No investments ready for profit distribution at this time.");
+                DB::commit();
+                return 0;
+            }
+
+            $this->info("Found {$activeInvestments->count()} investments ready for profit\n");
 
             $totalDistributed = 0;
             $investmentsProcessed = 0;
+            $investmentsCompleted = 0;
+            $skippedNotReady = 0;
+
+            $progressBar = $this->output->createProgressBar($activeInvestments->count());
+            $progressBar->start();
 
             foreach ($activeInvestments as $investment) {
-                // Check if profit already distributed today
-                $existingProfit = InvestmentProfit::where('investment_id', $investment->id)
-                    ->where('profit_date', $today->format('Y-m-d'))
-                    ->first();
+                try {
+                    // ✅ Get last profit time OR investment start time
+                    $lastProfit = InvestmentProfit::where('investment_id', $investment->id)
+                        ->latest('created_at')
+                        ->first();
+                    
+                    $referenceTime = $lastProfit 
+                        ? Carbon::parse($lastProfit->created_at) 
+                        : Carbon::parse($investment->start_date);
 
-                if ($existingProfit) {
-                    continue; // Skip if already processed today
-                }
+                    // ✅ Calculate exact hours passed
+                    $hoursPassed = $referenceTime->diffInHours($date);
 
-                // Calculate daily profit
-                $dailyProfit = $investment->daily_profit;
-                $dayNumber = $investment->profit_days_completed + 1;
+                    // ✅ Must be at least 24 hours
+                    if ($hoursPassed < 24) {
+                        $hoursRemaining = 24 - $hoursPassed;
+                        Log::info("Investment {$investment->id}: Not ready yet - {$hoursRemaining} hours remaining");
+                        $skippedNotReady++;
+                        $progressBar->advance();
+                        continue;
+                    }
 
-                // Get user and previous balance
-                $user = User::find($investment->user_id);
-                $previousBalance = $user->balance;
-                
-                // Create profit record
-                $investmentProfit = InvestmentProfit::create([
-                    'investment_id' => $investment->id,
-                    'user_id' => $investment->user_id,
-                    'amount' => $dailyProfit,
-                    'profit_date' => $today->format('Y-m-d'),
-                    'day_number' => $dayNumber
-                ]);
+                    // ✅ Prevent duplicate - check if already processed today
+                    $alreadyProcessedToday = InvestmentProfit::where('investment_id', $investment->id)
+                        ->whereDate('created_at', $date->format('Y-m-d'))
+                        ->exists();
+                    
+                    if ($alreadyProcessedToday) {
+                        $progressBar->advance();
+                        continue;
+                    }
 
-                // Update user balance
-                $user->increment('balance', $dailyProfit);
-                $newBalance = $user->fresh()->balance;
-                
-                // Create transaction log
-                \App\Models\Log::createTransactionLog(
-                    $user->id,
-                    'investment_profit',
-                    $dailyProfit,
-                    $previousBalance,
-                    $newBalance,
-                    'App\\Models\\InvestmentProfit',
-                    $investmentProfit->id,
-                    "Daily investment profit - Day {$dayNumber}",
-                    [
+                    $dailyProfit = $investment->daily_profit;
+                    $dayNumber = $investment->profit_days_completed + 1;
+                    $user = $investment->user;
+                    $previousBalance = $user->balance;
+                    
+                    // ✅ Create profit record with current timestamp
+                    $investmentProfit = InvestmentProfit::create([
                         'investment_id' => $investment->id,
+                        'user_id' => $investment->user_id,
+                        'amount' => $dailyProfit,
+                        'profit_date' => $date->format('Y-m-d'),
+                        'day_number' => $dayNumber
+                    ]);
+
+                    // Update user balance
+                    $user->increment('balance', $dailyProfit);
+                    $newBalance = $user->fresh()->balance;
+                    
+                    // Create transaction log
+                    if (class_exists('\App\Models\Log')) {
+                        \App\Models\Log::createTransactionLog(
+                            $user->id,
+                            'investment_profit',
+                            $dailyProfit,
+                            $previousBalance,
+                            $newBalance,
+                            'App\\Models\\InvestmentProfit',
+                            $investmentProfit->id,
+                            "Daily investment profit - Day {$dayNumber}",
+                            [
+                                'investment_id' => $investment->id,
+                                'day_number' => $dayNumber,
+                                'profit_date' => $date->format('Y-m-d'),
+                                'profit_time' => $date->format('H:i:s'),
+                                'hours_since_last' => $hoursPassed,
+                                'plan_type' => $investment->plan_type,
+                                'investment_amount' => $investment->amount
+                            ]
+                        );
+                    }
+
+                    // Update investment
+                    $investment->increment('profit_days_completed');
+                    $investment->increment('total_profit', $dailyProfit);
+                    $investment->update(['last_profit_date' => $date->format('Y-m-d')]);
+
+                    // Check if completed
+                    $totalDays = $investment->plan ? $investment->plan->duration_days : 50;
+                    if ($investment->profit_days_completed >= $totalDays) {
+                        $investment->update([
+                            'status' => Investment::STATUS_COMPLETED,
+                            'end_date' => $date
+                        ]);
+                        // Return capital to user
+                        $user->increment('balance', $investment->amount);
+                        $investmentsCompleted++;
+                        
+                        Log::info("Investment {$investment->id} completed - Capital returned: \${$investment->amount}");
+                    }
+
+                    $totalDistributed += $dailyProfit;
+                    $investmentsProcessed++;
+
+                    Log::info("Profit distributed", [
+                        'investment_id' => $investment->id,
+                        'user_id' => $user->id,
+                        'amount' => $dailyProfit,
                         'day_number' => $dayNumber,
-                        'profit_date' => $today->format('Y-m-d'),
-                        'plan_type' => $investment->plan_type,
-                        'investment_amount' => $investment->amount
-                    ]
-                );
+                        'hours_since_last' => $hoursPassed
+                    ]);
 
-                // Update investment progress
-                $investment->increment('profit_days_completed');
-                $investment->update(['last_profit_date' => $today->format('Y-m-d')]);
-
-                // Check if investment is completed
-                $totalDays = $investment->plan_id && $investment->plan ? $investment->plan->duration_days : 50;
-                if ($investment->profit_days_completed >= $totalDays) {
-                    $investment->update(['status' => Investment::STATUS_COMPLETED]);
-                    $this->info("Investment #{$investment->id} completed for user #{$user->id}");
+                } catch (\Exception $e) {
+                    Log::error('Profit distribution failed for investment', [
+                        'investment_id' => $investment->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
                 }
 
-                $totalDistributed += $dailyProfit;
-                $investmentsProcessed++;
-
-                $this->info("Distributed ${dailyProfit} to user #{$user->id} for investment #{$investment->id}");
+                $progressBar->advance();
             }
+
+            $progressBar->finish();
+            $this->newLine(2);
 
             DB::commit();
 
-            $this->info("Profit distribution completed!");
-            $this->info("Total investments processed: {$investmentsProcessed}");
-            $this->info("Total amount distributed: ${totalDistributed}");
+            // Summary
+            $this->info("✅ Profit distribution completed!");
+            $this->table(
+                ['Metric', 'Value'],
+                [
+                    ['Date & Time', $date->format('Y-m-d l H:i:s')],
+                    ['Day Type', $date->isWeekday() ? '💼 Weekday (Mon-Fri)' : '🎉 Weekend (Forced)'],
+                    ['Investments Found', $activeInvestments->count()],
+                    ['Successfully Processed', $investmentsProcessed],
+                    ['Not Ready Yet (< 24h)', $skippedNotReady],
+                    ['Completed Investments', $investmentsCompleted],
+                    ['Total Distributed', '$' . number_format($totalDistributed, 2)],
+                ]
+            );
 
-            // Log the distribution
+            if ($investmentsProcessed > 0) {
+                $this->info("\n💰 Next profits will be distributed 24 hours from now (if weekday)");
+            }
+
             Log::info('Daily profit distribution completed', [
-                'date' => $today->format('Y-m-d'),
+                'date' => $date->format('Y-m-d H:i:s'),
+                'day_of_week' => $date->format('l'),
+                'is_weekend' => !$date->isWeekday(),
+                'forced' => $force,
                 'investments_processed' => $investmentsProcessed,
                 'total_distributed' => $totalDistributed
             ]);
@@ -136,9 +230,9 @@ class DistributeDailyProfit extends Command
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('Error during profit distribution: ' . $e->getMessage());
+            $this->error('❌ Error during profit distribution: ' . $e->getMessage());
             Log::error('Daily profit distribution failed', [
-                'date' => $today->format('Y-m-d'),
+                'date' => $date->format('Y-m-d H:i:s'),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

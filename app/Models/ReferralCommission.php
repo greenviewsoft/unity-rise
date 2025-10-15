@@ -9,15 +9,19 @@ class ReferralCommission extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'referrer_id',
-        'referred_id',
-        'investment_amount',
-        'commission_amount',
-        'level',
-        'rank',
-        'commission_date'
-    ];
+ protected $fillable = [
+    'referrer_id',
+    'referred_id',
+    'investment_id',        // ✅ Add
+    'investment_amount',
+    'commission_amount',
+    'commission_rate',      // ✅ Add
+    'level',
+    'rank',
+    'rank_id',              // ✅ Add
+    'status',               // ✅ Add
+    'commission_date'
+];
 
     protected $casts = [
         'investment_amount' => 'decimal:2',

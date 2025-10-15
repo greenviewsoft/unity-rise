@@ -72,7 +72,7 @@
         }
         
         .section-title {
-            color: #ffffff;
+            color: red;
             font-weight: 600;
             font-size: 1.5rem;
             margin-bottom: 25px;
@@ -402,7 +402,7 @@
         }
         
         .section-title {
-            color: #ffffff;
+            color: purple;
             font-weight: 700;
             margin-bottom: 25px;
             display: flex;
@@ -574,7 +574,13 @@
 <div class="page-content">
     <div class="page-title page-title-small">
         <h2><a href="{{ url('user/dashboard') }}"><i class="fa fa-arrow-left"></i></a>Investment History</h2>
-        <a href="#" data-menu="menu-main" class="bg-fade-gray1-dark shadow-xl preload-img" data-src="{{ asset('public/assets/user/images/') }}/avatars/5s.png"></a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('user.investment.profit-history') }}" class="btn btn-modern btn-sm">
+                <i class="bi bi-graph-up"></i>
+                Profit History
+            </a>
+            <a href="#" data-menu="menu-main" class="bg-fade-gray1-dark shadow-xl preload-img" data-src="{{ asset('public/assets/user/images/') }}/avatars/5s.png"></a>
+        </div>
     </div>
     <div class="card header-card shape-rounded" data-card-height="150">
         <div class="card-overlay bg-highlight opacity-95"></div>
@@ -582,60 +588,15 @@
         <div class="card-bg preload-img" data-src="{{ asset('public/assets/user/images/') }}/pictures/20s.jpg"></div>
     </div>
 
-    <div class="content mt-0">
-        <!-- Comprehensive Investment Statistics -->
-        <div class="stats-overview">
-            <h5 class="section-title text-center mb-4">
-                <i class="fas fa-chart-pie"></i>
-                Investment Overview
-            </h5>
-            <div class="row g-3">
-                <div class="col-lg-2 col-md-4 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value">{{ $statistics['total_investments'] }}</div>
-                        <div class="stat-label">Total Investments</div>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value">{{ $statistics['active_investments'] }}</div>
-                        <div class="stat-label">Active</div>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value">{{ $statistics['completed_investments'] }}</div>
-                        <div class="stat-label">Completed</div>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value">${{ number_format($statistics['total_invested'], 0) }}</div>
-                        <div class="stat-label">Total Invested</div>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value">${{ number_format($statistics['total_active_amount'], 0) }}</div>
-                        <div class="stat-label">Active Amount</div>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value">${{ number_format($statistics['total_profit_earned'], 0) }}</div>
-                        <div class="stat-label">Total Profit</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Individual Active Investments Section -->
         @if($statistics['active_investments_list']->count() > 0)
         <div class="individual-investments-container">
-            <h5 class="section-title mb-4">
-                <i class="fas fa-wallet"></i>
-                Your Active Investments ({{ $statistics['active_investments_list']->count() }})
-            </h5>
+           <h5 class="section-title mb-4">
+    <i class="bi bi-wallet2"></i>
+    Your Active Investments ({{ $statistics['active_investments_list']->count() }})
+</h5>
             
             @foreach($statistics['active_investments_list'] as $index => $activeInvestment)
             <div class="individual-investment-wrapper mb-4">
@@ -657,7 +618,7 @@
                     <div class="investment-details-grid">
                         <div class="detail-item">
                             <div class="detail-icon">
-                                <i class="fas fa-dollar-sign"></i>
+                               <i class="bi bi-currency-dollar"></i>
                             </div>
                             <div class="detail-content">
                                 <div class="field-label">Investment Amount</div>
@@ -667,7 +628,7 @@
                         
                         <div class="detail-item">
                             <div class="detail-icon">
-                                <i class="fas fa-chart-line"></i>
+                               <i class="bi bi-graph-up"></i>
                             </div>
                             <div class="detail-content">
                                 <div class="field-label">Daily Profit</div>
@@ -677,7 +638,7 @@
                         
                         <div class="detail-item">
                             <div class="detail-icon">
-                                <i class="fas fa-clock"></i>
+                              <i class="bi bi-clock"></i>
                             </div>
                             <div class="detail-content">
                                 <div class="field-label">Active Days</div>
@@ -687,7 +648,7 @@
                         
                         <div class="detail-item">
                             <div class="detail-icon">
-                                <i class="fas fa-hourglass-half"></i>
+                               <i class="bi bi-hourglass-split"></i>
                             </div>
                             <div class="detail-content">
                                 <div class="field-label">Remaining Days</div>

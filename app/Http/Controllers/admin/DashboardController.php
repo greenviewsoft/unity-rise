@@ -31,6 +31,12 @@ class DashboardController extends Controller
         ->sum('amount');
         $data['totalwithdraw'] = Withdraw::sum('amount');
 
+        // Get latest 10 deposits with user information
+        $data['recentDeposits'] = Deposite::with('user')
+        ->orderBy('created_at', 'desc')
+        ->take(10)
+        ->get();
+
         return view('admin.dashboard', $data);
     }
 

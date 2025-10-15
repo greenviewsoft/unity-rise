@@ -39,9 +39,12 @@
                 <img class="top_logo_notifi" src="{{ asset('public/assets/user/images/') }}/notification.png" alt="notification.png">
 
                 @php
-                    $unseenck = App\Models\Unseen::where('user_id', Auth::user()->id)
-                        ->where('type', 'notification')
-                        ->first();
+                    $unseenck = null;
+                    if (Auth::check()) {
+                        $unseenck = App\Models\Unseen::where('user_id', Auth::user()->id)
+                            ->where('type', 'notification')
+                            ->first();
+                    }
                 @endphp
                 <em class="badge bg-red-dark color-white scale-box">
                     @if (!isset($unseenck))

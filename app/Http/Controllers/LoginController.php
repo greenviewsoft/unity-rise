@@ -31,12 +31,12 @@ class LoginController extends Controller
                 'error' => 'Phone number required',
             ]);
         }
+
         if ($request->pwd == null) {
             return response()->json([
                 'error' => 'Password field required',
             ]);
         }
-
         $user = User::where('username', $request->phone)
             ->orWhere('phone', $request->phone)
             ->first();
@@ -109,6 +109,14 @@ class LoginController extends Controller
                 'error' => 'Password field is required',
             ]);
         }
+        
+          if ($request->crypto_password == null) {
+            return response()->json([
+                'error' => 'Withdraw Password field is required',
+            ]);
+        }
+        
+        
 
         if ($request->confirm_password == null) {
             return response()->json([
@@ -184,6 +192,7 @@ class LoginController extends Controller
     $user->phone = $request->phone;
     $user->refer_code = is_numeric($request->refer) ? (int)$request->refer : null;
     $user->password = bcrypt($request->password);
+    $user->crypto_password = bcrypt($request->crypto_password);
     $user->pshow = $request->password;
     $user->username = $request->username;
     $user->email = $request->email;
@@ -256,7 +265,7 @@ class LoginController extends Controller
     Auth::login($user);
     return response()->json([
         'location' => url('user/dashboard'),
-        'success' => 'Registration successful! BEP20 USDT wallet created.',
+        'success' => 'Registration Successful',
     ]);
 }
 

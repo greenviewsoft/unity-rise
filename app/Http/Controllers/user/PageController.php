@@ -22,7 +22,7 @@ use App\Models\Refergift;
 use App\Models\Addresstrx;
 
 use App\Models\Investment;
-use App\Models\Settingtrx;
+use App\Models\SettingBep20;
 use App\Models\Spinamount;
 use App\Models\Sitesetting;
 use App\Models\Announcement;
@@ -308,7 +308,18 @@ class PageController extends Controller
 
     public function withdraw()
     {
-        $settingtrx = Settingtrx::find(1);
+        $settingbep20 = SettingBep20::find(1);
+        
+        // If no settings found, create default values
+        if (!$settingbep20) {
+            $settingbep20 = (object) [
+                'withdraw_fee' => 2,
+                'min_withdraw' => 10,
+                'usdt_to_usd_rate' => 1.0,
+                'network_name' => 'BSC',
+                'contract_address' => '0x55d398326f99059fF775485246999027B3197955'
+            ];
+        }
     
         // check total deposit
         $totalDeposit = Deposite::where('user_id', Auth::user()->id)->sum('amount');
@@ -320,12 +331,20 @@ class PageController extends Controller
         $pattern = '/\.\d+/';
         $authbal = preg_replace($pattern, '', $balance) - $totalDeposit;
     
-        return view('user.withdraw', compact('settingtrx', 'authbal'));
+        return view('user.withdraw', compact('settingbep20', 'authbal'));
     }
 
     public function deposit()
     {
         return view('user.deposit');
+    }
+
+    public function manualDeposit()
+    {
+        // Get BEP20 settings for the fixed address
+        $bep20Setting = SettingBep20::first();
+        
+        return view('user.manual-deposit', compact('bep20Setting'));
     }
 
     public function depositDetails()
@@ -414,9 +433,183 @@ class PageController extends Controller
 
    
 
+// public function team()
+// {
+//     $currentUser = Auth::user();
+//     $maxLevelsForRank = $this->getMaxLevelsForRank($currentUser->rank);
+
+//     // General team info
+//     $data['total'] = Referhis::where('user_id', $currentUser->id)->count();
+//     $today = Carbon::today();
+//     $data['todayUsers'] = Referhis::where('user_id', $currentUser->id)
+//         ->whereDate('created_at', $today)
+//         ->count();
+
+//     // Total deposit and B-receive for direct referrals
+//     $totalusers = Referhis::where('user_id', $currentUser->id)->get();
+//     $totalDepositSum = 0;
+//     $refcomSum = 0;
+//     foreach ($totalusers as $totaluser) {
+//         $deposites = Deposite::where('user_id', $totaluser->refer_id)->sum('amount');
+//         $totalDepositSum += $deposites;
+
+//         $refcomSum += History::where('user_id', $totaluser->user_id)
+//             ->where('type', 'B-receive')
+//             ->sum('amount');
+//     }
+//     $data['totaldeposite'] = $totalDepositSum;
+//     $data['refcom'] = $refcomSum;
+
+//     $data['totalcommission'] = ReferralCommission::where('referrer_id', $currentUser->id)->sum('commission_amount');
+//     $data['total_deposite'] = Deposite::where('user_id', $currentUser->id)->sum('amount');
+//     $data['total_withdraw'] = Withdraw::where('user_id', $currentUser->id)->sum('amount');
+
+//     $data['allgrabs'] = History::where('user_id', $currentUser->id)
+//         ->where('type', 'grab')
+//         ->sum('amount');
+//     $data['refercom'] = History::where('user_id', $currentUser->id)
+//         ->where('type', 'B-receive')
+//         ->sum('amount');
+
+//     // OPTIMIZED STATISTICS - Direct Members and Business
+//     $directReferrals = $currentUser->referrals()->get();
+//     $data['direct_member_count'] = $directReferrals->count();
+    
+//     // ✅ FIX: Get direct business total (handle case variations)
+//     $directUserIds = $directReferrals->pluck('id')->toArray();
+//     $data['direct_business_total'] = empty($directUserIds) ? 0 : 
+//         Investment::whereIn('user_id', $directUserIds)
+//             ->whereIn('status', ['active', 'Active', 'ACTIVE'])
+//             ->sum('amount');
+    
+//     // Active and Inactive Direct Members
+//     $data['direct_active_members'] = $directReferrals->where('status', 1)->count();
+//     $data['direct_inactive_members'] = $directReferrals->where('status', 0)->count();
+
+//     // ✅ FIX: Total Team Members (FILTERED BY MAX_LEVELS)
+//     $allDownlineUserIds = $currentUser->getDownlineUserIds();
+    
+//     // Filter downline IDs to only include users within max_levels
+//     $filteredDownlineIds = [];
+//     foreach ($allDownlineUserIds as $userId) {
+//         $downlineUser = User::find($userId);
+//         if ($downlineUser) {
+//             $level = $this->calculateUserLevel($currentUser, $downlineUser);
+            
+//             if ($level <= $maxLevelsForRank) {
+//                 $filteredDownlineIds[] = $userId;
+//             }
+//         }
+//     }
+
+//     $data['total_team_members'] = count($filteredDownlineIds);
+    
+//     if (!empty($filteredDownlineIds)) {
+//         $teamMemberStats = User::whereIn('id', $filteredDownlineIds)
+//                               ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active')
+//                               ->first();
+//         $data['total_active_team_members'] = $teamMemberStats->active ?? 0;
+//         $data['total_inactive_team_members'] = ($teamMemberStats->total ?? 0) - ($teamMemberStats->active ?? 0);
+//     } else {
+//         $data['total_active_team_members'] = 0;
+//         $data['total_inactive_team_members'] = 0;
+//     }
+    
+//     // ✅ FIX: Total Downline Business (ONLY within max_levels)
+//     $data['total_downline_business'] = empty($filteredDownlineIds) ? 0 : 
+//         Investment::whereIn('user_id', $filteredDownlineIds)
+//             ->whereIn('status', ['active', 'Active', 'ACTIVE'])
+//             ->sum('amount');
+    
+//     // Total Referral Income (All Commission Types)
+//     $data['total_referral_income'] = ReferralCommission::where('referrer_id', $currentUser->id)->sum('commission_amount') + 
+//                                   History::where('user_id', $currentUser->id)->where('type', 'B-receive')->sum('amount') +
+//                                   History::where('user_id', $currentUser->id)->where('type', 'Refer commmission')->sum('amount');
+
+//     // Multi-level downline users - OPTIMIZED
+//     if (!empty($filteredDownlineIds)) {
+//         // Get all users with their data in fewer queries
+//         $allDownlineUsers = User::whereIn('id', $filteredDownlineIds)->get();
+        
+//         // Get all investments for downline users in one query
+//         $investments = Investment::whereIn('user_id', $filteredDownlineIds)
+//                                 ->whereIn('status', ['active', 'Active', 'ACTIVE'])
+//                                 ->selectRaw('user_id, SUM(amount) as total_amount')
+//                                 ->groupBy('user_id')
+//                                 ->pluck('total_amount', 'user_id');
+        
+//         // Get all commissions for downline users in one query
+//         $commissions = ReferralCommission::whereIn('referred_id', $filteredDownlineIds)
+//                                         ->selectRaw('referred_id, SUM(commission_amount) as total_commission')
+//                                         ->groupBy('referred_id')
+//                                         ->pluck('total_commission', 'referred_id');
+        
+//         // Get all grabs for downline users in one query
+//         $grabs = History::whereIn('user_id', $filteredDownlineIds)
+//                       ->where('type', 'grab')
+//                       ->selectRaw('user_id, SUM(amount) as total_grabs')
+//                       ->groupBy('user_id')
+//                       ->pluck('total_grabs', 'user_id');
+        
+//         // Get earned commissions for current user in one query
+//         $earnedCommissions = ReferralCommission::where('referrer_id', $currentUser->id)
+//                                               ->whereIn('referred_id', $filteredDownlineIds)
+//                                               ->selectRaw('referred_id, SUM(commission_amount) as earned_commission')
+//                                               ->groupBy('referred_id')
+//                                               ->pluck('earned_commission', 'referred_id');
+        
+//         $refersusers = collect();
+//         foreach ($allDownlineUsers as $user) {
+//             $level = $this->calculateUserLevel($currentUser, $user);
+
+//             $user->level = $level;
+//             $user->total_deposit = $investments[$user->id] ?? 0;
+//             $user->total_commission = $commissions[$user->id] ?? 0;
+//             $user->total_grabs = $grabs[$user->id] ?? 0;
+//             $user->total_profit = $user->total_commission + $user->total_grabs;
+//             $user->earned_commission = $earnedCommissions[$user->id] ?? 0;
+
+//             $refersusers->push($user);
+//         }
+//         $data['refersusers'] = $refersusers->sortBy(['level', 'id']);
+//     } else {
+//         $data['refersusers'] = collect();
+//     }
+
+//     // User rank and business
+//     $data['user_rank'] = $currentUser->rank;
+//     $data['user_business_volume'] = $currentUser->getTeamBusinessVolume();
+//     $data['user_personal_investment'] = $currentUser->getPersonalInvestment();
+
+//     // Rank requirements
+//     $currentRankRequirements = $this->getRankRequirements($currentUser->rank);
+//     $nextRankRequirements = $this->getRankRequirements($currentUser->rank + 1);
+
+//     $data['current_rank_requirement'] = $currentRankRequirements;
+//     $data['next_rank_requirement'] = $nextRankRequirements;
+
+//     // Dynamic rank progress calculation
+//     $currentTarget = $currentRankRequirements['business_volume'];
+//     $nextTarget = $nextRankRequirements['business_volume'] ?? $currentTarget;
+
+//     $completed = min($data['user_business_volume'], $currentTarget);
+//     $remaining = max(0, $currentTarget - $data['user_business_volume']);
+//     $progressPercent = $currentTarget > 0 ? round(($completed / $currentTarget) * 100, 2) : 0;
+
+//     $data['business_completed'] = $completed;
+//     $data['business_remaining'] = $remaining;
+//     $data['progress_percent'] = $progressPercent;
+
+//     return view('user.team', $data);
+// }
+
 public function team()
 {
     $currentUser = Auth::user();
+    $maxLevelsForRank = $this->getMaxLevelsForRank($currentUser->rank);
+
+    // Treat these as "active" investment statuses everywhere
+    $activeStatuses = ['active', 'Active', 'ACTIVE'];
 
     // General team info
     $data['total'] = Referhis::where('user_id', $currentUser->id)->count();
@@ -451,82 +644,100 @@ public function team()
         ->where('type', 'B-receive')
         ->sum('amount');
 
-    // OPTIMIZED STATISTICS - Direct Members and Business
+    /* ---- Direct Members & Business (investment-based activity) ---- */
     $directReferrals = $currentUser->referrals()->get();
     $data['direct_member_count'] = $directReferrals->count();
-    
-    // Get direct business total with single query
-    $directUserIds = $directReferrals->pluck('id')->toArray();
-    $data['direct_business_total'] = empty($directUserIds) ? 0 : 
-        Investment::whereIn('user_id', $directUserIds)->where('status', 'active')->sum('amount');
-    
-    // Active and Inactive Direct Members
-    $data['direct_active_members'] = $directReferrals->where('status', 1)->count();
-    $data['direct_inactive_members'] = $directReferrals->where('status', 0)->count();
 
-    // Total Team Members (All Downline Levels) - Optimized
+    $directUserIds = $directReferrals->pluck('id')->toArray();
+
+    // Direct business total uses active investments only
+    $data['direct_business_total'] = empty($directUserIds) ? 0 :
+        Investment::whereIn('user_id', $directUserIds)
+            ->whereIn('status', $activeStatuses)
+            ->sum('amount');
+
+    // Active/Inactive = has at least one active investment
+    $directActiveIds = empty($directUserIds) ? collect() :
+        Investment::whereIn('user_id', $directUserIds)
+            ->whereIn('status', $activeStatuses)
+            ->distinct()
+            ->pluck('user_id');
+
+    $data['direct_active_members']   = $directActiveIds->count();
+    $data['direct_inactive_members'] = $data['direct_member_count'] - $data['direct_active_members'];
+
+    /* ---- Team (filtered by max levels) ---- */
     $allDownlineUserIds = $currentUser->getDownlineUserIds();
-    $data['total_team_members'] = count($allDownlineUserIds);
-    
-    if (!empty($allDownlineUserIds)) {
-        $teamMemberStats = User::whereIn('id', $allDownlineUserIds)
-                              ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active')
-                              ->first();
-        $data['total_active_team_members'] = $teamMemberStats->active ?? 0;
-        $data['total_inactive_team_members'] = ($teamMemberStats->total ?? 0) - ($teamMemberStats->active ?? 0);
+
+    $filteredDownlineIds = [];
+    foreach ($allDownlineUserIds as $userId) {
+        $downlineUser = User::find($userId);
+        if ($downlineUser) {
+            $level = $this->calculateUserLevel($currentUser, $downlineUser);
+            if ($level <= $maxLevelsForRank) {
+                $filteredDownlineIds[] = $userId;
+            }
+        }
+    }
+
+    $data['total_team_members'] = count($filteredDownlineIds);
+
+    if (!empty($filteredDownlineIds)) {
+        // Active/Inactive = has at least one active investment
+        $teamActiveIds = Investment::whereIn('user_id', $filteredDownlineIds)
+            ->whereIn('status', $activeStatuses)
+            ->distinct()
+            ->pluck('user_id');
+
+        $data['total_active_team_members']   = $teamActiveIds->count();
+        $data['total_inactive_team_members'] = count($filteredDownlineIds) - $data['total_active_team_members'];
     } else {
         $data['total_active_team_members'] = 0;
         $data['total_inactive_team_members'] = 0;
     }
-    
-    // Total Downline Business (All Levels) - Use optimized method
-    $data['total_downline_business'] = $currentUser->getTeamBusinessVolume();
-    
-    // Total Referral Income (All Commission Types)
-    $data['total_referral_income'] = ReferralCommission::where('referrer_id', $currentUser->id)->sum('commission_amount') + 
-                                   History::where('user_id', $currentUser->id)->where('type', 'B-receive')->sum('amount') +
-                                   History::where('user_id', $currentUser->id)->where('type', 'Refer commmission')->sum('amount');
 
-    // Multi-level downline users - OPTIMIZED
-    $allDownlineUserIds = $currentUser->getDownlineUserIds();
-    
-    if (!empty($allDownlineUserIds)) {
-        // Get all users with their data in fewer queries
-        $allDownlineUsers = User::whereIn('id', $allDownlineUserIds)->get();
-        
-        // Get all investments for downline users in one query
-        $investments = Investment::whereIn('user_id', $allDownlineUserIds)
-                                ->where('status', 'active')
-                                ->selectRaw('user_id, SUM(amount) as total_amount')
-                                ->groupBy('user_id')
-                                ->pluck('total_amount', 'user_id');
-        
-        // Get all commissions for downline users in one query
-        $commissions = ReferralCommission::whereIn('referred_id', $allDownlineUserIds)
-                                        ->selectRaw('referred_id, SUM(commission_amount) as total_commission')
-                                        ->groupBy('referred_id')
-                                        ->pluck('total_commission', 'referred_id');
-        
-        // Get all grabs for downline users in one query
-        $grabs = History::whereIn('user_id', $allDownlineUserIds)
-                       ->where('type', 'grab')
-                       ->selectRaw('user_id, SUM(amount) as total_grabs')
-                       ->groupBy('user_id')
-                       ->pluck('total_grabs', 'user_id');
-        
-        // Get earned commissions for current user in one query
+    // Team business uses active investments only
+    $data['total_downline_business'] = empty($filteredDownlineIds) ? 0 :
+        Investment::whereIn('user_id', $filteredDownlineIds)
+            ->whereIn('status', $activeStatuses)
+            ->sum('amount');
+
+    // Total Referral Income (All Commission Types)
+    $data['total_referral_income'] =
+        ReferralCommission::where('referrer_id', $currentUser->id)->sum('commission_amount')
+        + History::where('user_id', $currentUser->id)->where('type', 'B-receive')->sum('amount')
+        + History::where('user_id', $currentUser->id)->where('type', 'Refer commmission')->sum('amount');
+
+    /* ---- Multi-level downline users (pre-aggregated) ---- */
+    if (!empty($filteredDownlineIds)) {
+        $allDownlineUsers = User::whereIn('id', $filteredDownlineIds)->get();
+
+        $investments = Investment::whereIn('user_id', $filteredDownlineIds)
+            ->whereIn('status', $activeStatuses)
+            ->selectRaw('user_id, SUM(amount) as total_amount')
+            ->groupBy('user_id')
+            ->pluck('total_amount', 'user_id');
+
+        $commissions = ReferralCommission::whereIn('referred_id', $filteredDownlineIds)
+            ->selectRaw('referred_id, SUM(commission_amount) as total_commission')
+            ->groupBy('referred_id')
+            ->pluck('total_commission', 'referred_id');
+
+        $grabs = History::whereIn('user_id', $filteredDownlineIds)
+            ->where('type', 'grab')
+            ->selectRaw('user_id, SUM(amount) as total_grabs')
+            ->groupBy('user_id')
+            ->pluck('total_grabs', 'user_id');
+
         $earnedCommissions = ReferralCommission::where('referrer_id', $currentUser->id)
-                                              ->whereIn('referred_id', $allDownlineUserIds)
-                                              ->selectRaw('referred_id, SUM(commission_amount) as earned_commission')
-                                              ->groupBy('referred_id')
-                                              ->pluck('earned_commission', 'referred_id');
-        
+            ->whereIn('referred_id', $filteredDownlineIds)
+            ->selectRaw('referred_id, SUM(commission_amount) as earned_commission')
+            ->groupBy('referred_id')
+            ->pluck('earned_commission', 'referred_id');
+
         $refersusers = collect();
         foreach ($allDownlineUsers as $user) {
             $level = $this->calculateUserLevel($currentUser, $user);
-
-            // Limit display for Rank 1 to 6 levels
-            if ($currentUser->rank == 1 && $level > 6) continue;
 
             $user->level = $level;
             $user->total_deposit = $investments[$user->id] ?? 0;
@@ -535,7 +746,6 @@ public function team()
             $user->total_profit = $user->total_commission + $user->total_grabs;
             $user->earned_commission = $earnedCommissions[$user->id] ?? 0;
 
-            // Show all downline users regardless of deposit amount
             $refersusers->push($user);
         }
         $data['refersusers'] = $refersusers->sortBy(['level', 'id']);
@@ -543,19 +753,18 @@ public function team()
         $data['refersusers'] = collect();
     }
 
-    // User rank and business
+    // User rank & business
     $data['user_rank'] = $currentUser->rank;
     $data['user_business_volume'] = $currentUser->getTeamBusinessVolume();
     $data['user_personal_investment'] = $currentUser->getPersonalInvestment();
 
-    // Rank requirements
+    // Rank requirements and progress
     $currentRankRequirements = $this->getRankRequirements($currentUser->rank);
     $nextRankRequirements = $this->getRankRequirements($currentUser->rank + 1);
 
     $data['current_rank_requirement'] = $currentRankRequirements;
     $data['next_rank_requirement'] = $nextRankRequirements;
 
-    // Dynamic rank progress calculation
     $currentTarget = $currentRankRequirements['business_volume'];
     $nextTarget = $nextRankRequirements['business_volume'] ?? $currentTarget;
 
@@ -569,6 +778,8 @@ public function team()
 
     return view('user.team', $data);
 }
+
+
 
 /**
  * Calculate the level of a user in relation to the current user
@@ -586,6 +797,40 @@ public function calculateUserLevel($rootUser, $downlineUser)
     }
 
     return $level;
+}
+
+
+
+/**
+ * Get max levels allowed for a specific rank
+ */
+private function getMaxLevelsForRank($rank)
+{
+    $rankData = \App\Models\ReferralCommissionLevel::where('rank_id', $rank ?? 1)
+        ->where('is_active', 1)
+        ->first();
+    
+    if ($rankData) {
+        return $rankData->max_levels;
+    }
+    
+    // Fallback values if not found in database
+    $maxLevels = [
+        1 => 6,   // Rookie
+        2 => 9,   // Bronze
+        3 => 12,  // Silver
+        4 => 15,  // Gold
+        5 => 18,  // Diamond
+        6 => 22,  // Master
+        7 => 26,  // Grand Master
+        8 => 30,  // Champion
+        9 => 33,  // Legend
+        10 => 36, // Mythic
+        11 => 38, // Immortal
+        12 => 40  // Divine
+    ];
+    
+    return $maxLevels[$rank] ?? 6;
 }
 
 /**
@@ -1077,10 +1322,17 @@ private function getRankRequirements($rank)
     {
         $user = Auth::user();
         $depositAmount = Session::get('bep20_amount');
-        $walletAddress = Session::get('bep20_wallet_address');
         
-        if (!$depositAmount || !$walletAddress) {
+        // Get the admin-set receiver address from settings
+        $bep20Setting = SettingBep20::first();
+        $walletAddress = $bep20Setting ? $bep20Setting->receiver_address : null;
+        
+        if (!$depositAmount) {
             return redirect()->route('user.deposit')->with('error', 'Invalid deposit session');
+        }
+        
+        if (!$walletAddress) {
+            return redirect()->route('user.deposit')->with('error', 'Manual deposit address not configured. Please contact administrator.');
         }
         
         return view('user.bep20-payment', compact('user', 'depositAmount', 'walletAddress'));

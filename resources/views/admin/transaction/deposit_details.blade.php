@@ -65,27 +65,52 @@
                                                 <td><span class="badge bg-success">{{ number_format($deposite->amount, 2) }} {{ $deposite->currency }}</span></td>
                                             </tr>
                                             <tr>
-                                                <td><strong>Transaction ID:</strong></td>
-                                                <td>
-                                                    @if($deposite->txid)
-                                                        <code class="text-break">{{ $deposite->txid }}</code>
-                                                    @else
-                                                        <span class="text-muted">Not available</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Status:</strong></td>
-                                                <td>
-                                                    @if($deposite->status == 1)
-                                                        <span class="badge bg-success">Completed</span>
-                                                    @elseif($deposite->status == 0)
-                                                        <span class="badge bg-warning">Pending</span>
-                                                    @else
-                                                        <span class="badge bg-secondary">Unknown</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
+                                <td><strong>Transaction ID:</strong></td>
+                                <td>
+                                    @if($deposite->txid)
+                                        <code class="text-break">{{ $deposite->txid }}</code>
+                                    @else
+                                        <span class="text-muted">Not available</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Transaction Hash:</strong></td>
+                                <td>
+                                    @if($deposite->transaction_hash)
+                                        <code class="text-break">{{ $deposite->transaction_hash }}</code>
+                                    @else
+                                        <span class="text-muted">Not provided</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                
+                            </tr>
+                            <tr>
+                                <td><strong>Added By:</strong></td>
+                                <td>
+                                    @if($deposite->deposit_type === 'admin')
+                                        <span class="badge bg-info">Admin</span>
+                                    @else
+                                        <span class="badge bg-secondary">User</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    @if($deposite->status == 1)
+                                        <span class="badge bg-success">Completed</span>
+                                    @elseif($deposite->status == 0)
+                                        <span class="badge bg-warning">Pending</span>
+                                    @elseif($deposite->status == -1)
+                                        <span class="badge bg-danger">Rejected</span>
+                                    @else
+                                        <span class="badge bg-secondary">Unknown</span>
+                                    @endif
+                                </td>
+                            </tr>
                                             <tr>
                                                 <td><strong>Created At:</strong></td>
                                                 <td>{{ $deposite->created_at->format('M d, Y h:i A') }}</td>
@@ -117,7 +142,7 @@
                                                     <td>{{ $user->email ?? 'N/A' }}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td><strong>Registered:</strong></td>
+                                                 
                                                     <td>{{ $user->created_at ? $user->created_at->format('M d, Y') : 'N/A' }}</td>
                                                 </tr>
                                             </table>
@@ -223,6 +248,39 @@
                                     </div>
                                 @endif
 
+                                @if($deposite->screenshot && $deposite->deposit_type === 'manual')
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h5 class="text-primary mb-3">
+                                                <i class="fas fa-image me-2"></i>Payment Screenshot
+                                            </h5>
+                                            <div class="text-center">
+                                                <img src="{{ route('admin.deposit.screenshot', $deposite->id) }}" 
+                                     alt="Payment Screenshot" 
+                                     class="img-fluid rounded shadow" 
+                                     style="max-width: 500px; max-height: 400px; cursor: pointer;"
+                                     onclick="openImageModal(this.src)">
+                                                <p class="text-muted mt-2">Click image to view full size</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                
+                                @if($deposite->admin_notes && $deposite->status == -1)
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h5 class="text-danger mb-3">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>Admin Notes
+                                            </h5>
+                                            <div class="alert alert-danger">
+                                                {{ $deposite->admin_notes }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
                                 <div class="text-center mt-4">
                                     <a class="btn btn-primary" href="{{ url('admin/deposite') }}">
                                         <i class="fas fa-arrow-left me-2"></i>Back to Deposits
@@ -258,6 +316,43 @@
                 icon.classList.remove('fa-eye-slash');
                 icon.classList.add('fa-eye');
             }
+        }
+        
+        function openImageModal(imageSrc) {
+            // Create modal HTML
+            const modalHtml = `
+                <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="imageModalLabel">Payment Screenshot</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <img src="${imageSrc}" alt="Payment Screenshot" class="img-fluid">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('imageModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+            modal.show();
+            
+            // Remove modal from DOM when hidden
+            document.getElementById('imageModal').addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
         }
     </script>
 @endsection

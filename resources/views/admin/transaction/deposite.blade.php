@@ -52,7 +52,7 @@
                             <div class="col-md-3">
                                 <label for="key" class="form-label">Search</label>
                                 <input type="text" class="form-control" name="key" id="key" 
-                                       placeholder="Order number, TxID..." 
+                                       placeholder="Order number, TxID, Transaction Hash..." 
                                        value="{{ request('key') }}">
                             </div>
                             <div class="col-md-2">
@@ -81,6 +81,14 @@
                                     <option value="USDT" {{ request('currency') == 'USDT' ? 'selected' : '' }}>USDT</option>
                                 </select>
                             </div>
+                            <div class="col-md-2">
+                                <label for="deposit_type" class="form-label">Type</label>
+                                <select class="form-control" name="deposit_type" id="deposit_type">
+                                    <option value="">All Types</option>
+                                    <option value="auto" {{ request('deposit_type') == 'Admin' ? 'selected' : '' }}>Admin</option>
+                                    <option value="manual" {{ request('deposit_type') == 'manual' ? 'selected' : '' }}>Manual</option>
+                                </select>
+                            </div>
                             <div class="col-md-1">
                                 <label class="form-label">&nbsp;</label>
                                 <div class="d-grid">
@@ -100,8 +108,9 @@
                                     <th>Order Number</th>
                                     <th>User</th>
                                     <th>Amount</th>
-                                    <th>Currency</th>
+                                    <th>Request By</th>
                                     <th>TxID</th>
+                                    <th>Transaction Hash</th>
                                     <th>Date</th>
                                     <th>Status</th>
                                     <th>Action</th>
@@ -130,13 +139,34 @@
                                         <td>
                                             <span class="badge bg-success">{{ number_format($deposite->amount, 2) }}</span>
                                         </td>
+                                       
+                                        
                                         <td>
-                                            <span class="badge bg-info">{{ $deposite->currency }}</span>
+                                            @if($deposite->deposit_type === 'admin')
+                                                <span class="badge bg-info">Admin</span>
+                                            @else
+                                                <span class="badge bg-secondary">User</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <div class="text-truncate" style="max-width: 150px;" title="{{ $deposite->txid }}">
                                                 {{ $deposite->txid }}
                                             </div>
+                                            @if($deposite->deposit_type === 'manual' && $deposite->screenshot)
+                                                <br><small>
+                                                    <a href="javascript:void(0)" onclick="viewScreenshot('{{ route('admin.deposit.screenshot', $deposite->id) }}')" class="text-primary">View Screenshot</a>
+                                                   
+                                                </small>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($deposite->transaction_hash)
+                                                <div class="text-truncate" style="max-width: 150px;" title="{{ $deposite->transaction_hash }}">
+                                                    <code class="small">{{ $deposite->transaction_hash }}</code>
+                                                </div>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <div>
@@ -147,8 +177,16 @@
                                         <td>
                                             @if($deposite->status == 1)
                                                 <span class="badge bg-success">Completed</span>
+                                                @if($deposite->approved_at)
+                                                    <br><small class="text-muted">{{ $deposite->approved_at->format('M d, Y h:i A') }}</small>
+                                                @endif
                                             @elseif($deposite->status == 0)
                                                 <span class="badge bg-warning">Pending</span>
+                                            @elseif($deposite->status == -1)
+                                                <span class="badge bg-danger">Rejected</span>
+                                                @if($deposite->approved_at)
+                                                    <br><small class="text-muted">{{ $deposite->approved_at->format('M d, Y h:i A') }}</small>
+                                                @endif
                                             @else
                                                 <span class="badge bg-secondary">Unknown</span>
                                             @endif
@@ -159,6 +197,19 @@
                                                     class="btn btn-sm btn-outline-primary" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                
+                                                @if($deposite->deposit_type === 'manual' && $deposite->status == 0)
+                                                    <a href="{{ route('admin.deposit.approve', $deposite->id) }}"
+                                                        class="btn btn-sm btn-outline-success" title="Approve Deposit"
+                                                        onclick="return confirm('Are you sure you want to approve this manual deposit?')">
+                                                        <i class="fas fa-check"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning" title="Reject Deposit"
+                                                            data-bs-toggle="modal" data-bs-target="#rejectModal{{ $deposite->id }}">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                @endif
+                                                
                                                 <a href="{{ url('admin/deposit/delete', $deposite->id) }}"
                                                     class="btn btn-sm btn-outline-danger" title="Delete"
                                                     onclick="return confirm('Are you sure you want to delete this deposit?')">
@@ -177,6 +228,56 @@
             </div>
         </div>
     </div>
+
+    <!-- Rejection Modals -->
+    @foreach ($deposites as $deposite)
+        @if($deposite->deposit_type === 'manual' && $deposite->status == 0)
+            <div class="modal fade" id="rejectModal{{ $deposite->id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ $deposite->id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="rejectModalLabel{{ $deposite->id }}">Reject Manual Deposit</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="{{ url('admin/deposit/reject', $deposite->id) }}" method="POST">
+                            @csrf
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="rejection_reason{{ $deposite->id }}" class="form-label">Rejection Reason</label>
+                                    <textarea class="form-control" id="rejection_reason{{ $deposite->id }}" name="rejection_reason" rows="3" placeholder="Enter reason for rejection..." required></textarea>
+                                </div>
+                                <div class="alert alert-warning">
+                                    <strong>Warning:</strong> This action will reject the deposit for Order #{{ $deposite->order_number }} ({{ number_format($deposite->amount, 2) }} {{ $deposite->currency }}).
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-danger">Reject Deposit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+
+    <!-- Screenshot Modal -->
+    <div class="modal fade" id="screenshotModal" tabindex="-1" aria-labelledby="screenshotModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="screenshotModalLabel">Deposit Screenshot</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="screenshotImage" src="" alt="Deposit Screenshot" class="img-fluid" style="max-height: 70vh;">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 
@@ -184,4 +285,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous">
     </script>
     <script src="{{ asset('public/assets/admin/js/') }}/scripts.js"></script>
+    
+    <script>
+        function viewScreenshot(imageUrl) {
+            document.getElementById('screenshotImage').src = imageUrl;
+            var screenshotModal = new bootstrap.Modal(document.getElementById('screenshotModal'));
+            screenshotModal.show();
+        }
+    </script>
 @endsection

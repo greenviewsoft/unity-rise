@@ -766,40 +766,114 @@ body {
             </div>
          </a>
          <div class="divider my-2 opacity-50"></div>
-         <div class="total_balance_area">
-            <!-- Today Profits from Investment -->
-            <a href="{{ url('user/history') }}" class="py-1">
-               <div class="align-self-center ps-1">
-                  <h5 class="pt-1 mb-n1">{{ __('lang.today_profit') }}</h5>
-               </div>
-               <div class="align-self-center ms-auto">
-                  <h4 class="pt-1 mb-n1 color-blue-dark">${{ number_format($todaygrabs, 2) }}</h4>
-               </div>
-            </a>
-            <div class="divider my-2 opacity-50"></div>
+
+         <!-- Financial Stats Cards Grid -->
+         <div class="row g-3 mt-2">
+            <!-- Today Profits -->
+            <div class="col-6">
+               <a href="{{ route('user.investment.profit-history') }}" style="text-decoration: none;">
+                  <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                     <div class="d-flex align-items-center mb-2">
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; margin-right: 12px;">
+                           <i class="bi bi-graph-up-arrow" style="font-size: 24px; color: #fff;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                           <p class="mb-0" style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500;">Today Profit</p>
+                           <h4 class="mb-0" style="color: #fff; font-weight: 700; font-size: 18px;">${{ number_format($todaygrabs, 2) }}</h4>
+                        </div>
+                     </div>
+                  </div>
+               </a>
+            </div>
+
+            <!-- Referral Income -->
+            <div class="col-6">
+               <a href="{{ url('/user/team') }}" style="text-decoration: none;">
+                  <div class="card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+                     <div class="d-flex align-items-center mb-2">
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; margin-right: 12px;">
+                           <i class="bi bi-people-fill" style="font-size: 24px; color: #fff;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                           <p class="mb-0" style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500;">Referral Income</p>
+                           <h4 class="mb-0" style="color: #fff; font-weight: 700; font-size: 18px;">${{ number_format($total_referral_income, 2) }}</h4>
+                        </div>
+                     </div>
+                  </div>
+               </a>
+            </div>
+
+            <!-- Team Income -->
+            <div class="col-6">
+               <a href="{{ url('/user/team') }}" style="text-decoration: none;">
+                  <div class="card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: none; border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);">
+                     <div class="d-flex align-items-center mb-2">
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; margin-right: 12px;">
+                           <i class="bi bi-trophy-fill" style="font-size: 24px; color: #fff;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                           <p class="mb-0" style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500;">Team Income</p>
+                           <h4 class="mb-0" style="color: #fff; font-weight: 700; font-size: 18px;">${{ number_format($allrankrewards, 2) }}</h4>
+                        </div>
+                     </div>
+                  </div>
+               </a>
+            </div>
+
+            <!-- Total Deposit -->
+            <div class="col-6">
+               <a href="{{ url('user/record?type=deposit') }}" style="text-decoration: none;">
+                  <div class="card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
+                     <div class="d-flex align-items-center mb-2">
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; margin-right: 12px;">
+                           <i class="bi bi-wallet2" style="font-size: 24px; color: #fff;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                           <p class="mb-0" style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500;">Total Deposit</p>
+                           <h4 class="mb-0" style="color: #fff; font-weight: 700; font-size: 18px;">${{ number_format($total_deposit, 2) }}</h4>
+                        </div>
+                     </div>
+                  </div>
+               </a>
+            </div>
+
+            <!-- Total Withdrawal -->
+            <div class="col-6">
+               <a href="{{ url('user/record?type=withdraw') }}" style="text-decoration: none;">
+                  <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);">
+                     <div class="d-flex align-items-center mb-2">
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; margin-right: 12px;">
+                           <i class="bi bi-cash-stack" style="font-size: 24px; color: #fff;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                           <p class="mb-0" style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500;">Total Withdrawal</p>
+                           <h4 class="mb-0" style="color: #fff; font-weight: 700; font-size: 18px;">${{ number_format($total_withdrawal, 2) }}</h4>
+                        </div>
+                     </div>
+                  </div>
+               </a>
+            </div>
             
-            <!-- Promotion Bonus from Refer Commission -->
-            <a href="{{ url('user/history') }}" class="py-1">
-               <div class="align-self-center ps-1">
-                  <h5 class="pt-1 mb-n1">{{ __('lang.promo_bonus') }}</h5>
-                 
-               </div>
-               <div class="align-self-center ms-auto">
-                  <h4 class="pt-1 mb-n1 color-green-dark">${{ number_format($total_referral_income, 2) }}</h4>
-               </div>
-            </a>
-            <div class="divider my-2 opacity-50"></div>
+           <!-- Total Investment -->
+<div class="col-6">
+   <a href="{{ url('/user/investment/history') }}" style="text-decoration: none;">
+      <div class="card" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none; border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.35);">
+         <div class="d-flex align-items-center mb-2">
+            <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; margin-right: 12px;">
+               <i class="bi bi-piggy-bank-fill" style="font-size: 24px; color: #fff;"></i>
+            </div>
+            <div class="flex-grow-1">
+               <p class="mb-0" style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500;">Total Investment</p>
+               <h4 class="mb-0" style="color: #fff; font-weight: 700; font-size: 18px;">
+                  ${{ number_format($total_investment, 2) }}
+               </h4>
+            </div>
+         </div>
+      </div>
+   </a>
+</div>
+
             
-            <!-- Accumulated Profits from Leader Rewards -->
-            <a href="{{ url('user/history') }}" class="py-1">
-               <div class="align-self-center ps-1">
-                  <h5 class="pt-1 mb-n1">Team Income</h5>
-                 
-               </div>
-               <div class="align-self-center ms-auto">
-                  <h4 class="pt-1 mb-n1 color-purple-dark">${{ number_format($allrankrewards, 2) }}</h4>
-               </div>
-            </a>
          </div>
       </div>
    </div>
@@ -923,48 +997,92 @@ body {
             <h6 class="menu-label">Our Team</h6>
         </div>
 
+       
+
     </div>
 </div>
+@php
+$telegram = DB::table('social_links')
+    ->where('name', 'Telegram Support')
+    ->where('is_active', 1)
+    ->first();
 
+    $youtube = DB::table('social_links')
+    ->where('name', 'Youtube Support')
+    ->where('is_active', 1)
+    ->first();
+
+
+    $zoom = DB::table('social_links')
+    ->where('name', 'Zoom Suppprt')
+    ->where('is_active', 1)
+    ->first();
+    $telegramGroups = DB::table('social_links')
+    ->where('name', 'Telegram Groups')
+    ->where('is_active', 1)
+    ->first();
+
+    $buy = DB::table('social_links')
+    ->where('name', 'Buy')
+    ->where('is_active', 1)
+    ->first();
+
+    $sell = DB::table('social_links')
+    ->where('name', 'Sell')
+    ->where('is_active', 1)
+    ->first();
+
+
+
+@endphp
 
 <div class="content menu_button">
     <div class="button_ruls d-flex flex-wrap text-center justify-content-center">
 
-        <div class="menu-item mb-4">
-            <a href="{{ route('user.deposit') }}" class="menu-link">
-                <div class="menu-icon-wrapper">
-                    <img class="menu-icon" src="{{ asset('public/assets/user/images/customer-service.png') }}" alt="deposit">
-                </div>
-            </a>
-            <h6 class="menu-label">Customer Support</h6>
-        </div>
 
+
+        
+        @if($telegram)
         <div class="menu-item mb-4">
-            <a href="{{ URL('/https://www.youtube.com/channel/UC3Y33h3h3h3h3h3h3h3h3h') }}" class="menu-link">
+            <a href="{{ $telegram->url }}" class="menu-link" target="_blank">
+                <div class="menu-icon-wrapper">
+                    <img class="menu-icon" src="{{ asset('public/assets/user/images/customer-service.png') }}" alt="telegram">
+                </div>
+           
+            <h6 class="menu-label">{{ $telegram->name }}</h6> </a>
+        </div>
+        @endif
+        @if($youtube)
+        <div class="menu-item mb-4">
+            <a href="{{ $youtube->url }}" class="menu-link" target="_blank">
                 <div class="menu-icon-wrapper">
                     <img class="menu-icon" src="{{ asset('public/assets/user/images/youtube.png') }}" alt="withdraw">
                 </div>
-            </a>
-            <h6 class="menu-label">Youtube</h6>
+           
+            <h6 class="menu-label">Youtube</h6> </a>
         </div>
-
+        @endif
+        @if($zoom)
         <div class="menu-item mb-4">
-            <a href="{{ route('user.invite') }}" class="menu-link">
+            <a href="{{ $zoom->url }}" class="menu-link" target="_blank">
                 <div class="menu-icon-wrapper">
                     <img class="menu-icon" src="{{ asset('public/assets/user/images/zoom.png') }}" alt="invite">
                 </div>
-            </a>
-            <h6 class="menu-label">Zoom</h6>
+          
+            <h6 class="menu-label">Zoom</h6> </a>
         </div>
-
+        @endif
+        @if($telegramGroups)
         <div class="menu-item mb-4">
-            <a href="{{ URL('/https://www.kimi.com') }}" class="menu-link">
+            <a href="{{ $telegramGroups->url }}" class="menu-link" target="_blank">
                 <div class="menu-icon-wrapper">
                     <img class="menu-icon" src="{{ asset('public/assets/user/images/telegram.png') }}" alt="team">
                 </div>
-            </a>
-            <h6 class="menu-label">Telegram Support</h6>
+           
+            <h6 class="menu-label">Telegram Groups</h6> </a>
+     
         </div>
+        @endif
 
     </div>
 </div>
@@ -991,25 +1109,26 @@ body {
             </a>
             <h6 class="menu-label">About</h6>
         </div>
-
+@if($buy)
         <div class="menu-item mb-4">
-            <a href="{{ URL('https://www.lastpass.com/features/password-generator') }}" class="menu-link">
+            <a href="{{ $buy->url }}" class="menu-link" target="_blank">
                 <div class="menu-icon-wrapper">
                     <img class="menu-icon" src="{{ asset('public/assets/user/images/buy.png') }}" alt="invite">
                 </div>
-            </a>
+          
             <h6 class="menu-label">BUY</h6>
         </div>
-
+        @endif
+        @if($sell)
         <div class="menu-item mb-4">
-            <a href="{{ URL('/https://www.kimi.com') }}" class="menu-link">
+            <a href="{{ $sell->url }}" class="menu-link" target="_blank">
                 <div class="menu-icon-wrapper">
                     <img class="menu-icon" src="{{ asset('public/assets/user/images/selling.png') }}" alt="team">
                 </div>
-            </a>
-            <h6 class="menu-label">Sell</h6>
+    
+            <h6 class="menu-label">Sell</h6> </a>
         </div>
-
+@endif
     </div>
 </div>
 
@@ -1094,24 +1213,7 @@ body {
          </a>
       </div>
    </div>
-   {{-- <div class="card card-style amazon_part gradient-red shadow-bg shadow-bg-s">
-      <div class="content">
-         <a href="{{ url('user/amazon') }}" class="d-flex">
-            <div class="align-self-center">
-               <h1 class="mb-0 font-40"><img src="{{ asset('public/assets/user/images/') }}/Amazon_icon.svg.png" alt="Amazon sales"></h1>
-            </div>
-            <div class="loby-title align-self-center">
-               <h5 class="">
-                  {{ __('lang.sales_commission') }}
-               </h5>
-            </div>
-            <div class="align-self-center ms-auto">
-               <i class="bi bi-arrow-right-short color-white d-block pt-1 font-20 opacity-50"></i>
-            </div>
-         </a>
-      </div>
-   </div> --}}
-
+  
     <!-- Profit Withdrawal -->
    <div class="content profit-list-users">
       <div class="title">
@@ -1137,7 +1239,7 @@ body {
    </div>
    
    <!-- Customer Support Section -->
-   <div class="card card-style">
+   {{-- <div class="card card-style">
       <div class="content">
          <h4 class="mb-3 text-white">
             <i class="fas fa-headset me-2"></i>Customer Support
@@ -1173,7 +1275,7 @@ body {
          </div>
       </div>
    </div>
-   
+    --}}
    <div class="gap-tool"></div>
 </div>
 

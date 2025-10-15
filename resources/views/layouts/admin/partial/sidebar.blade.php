@@ -80,6 +80,12 @@
                     </nav>
                 </div>
 
+                <!-- BEP20 Settings -->
+                <a class="nav-link {{ Request::is('admin/bep20-settings*') ? 'active' : '' }}" href="{{ url('admin/bep20-settings') }}">
+                    <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div>
+                    Withdraw Settings
+                </a>
+
 
 
 

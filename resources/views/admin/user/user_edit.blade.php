@@ -106,6 +106,36 @@
                                         </div>
                                     </div>
 
+
+
+ <div class="form-row">
+                                        <div class="form-group col-md-12">
+                                            <label>Deposit Address</label>
+                                            <input type="text" name="wallet_address" class="form-control"
+                                                value="{{ $user->wallet_address }}" />
+                                            @error('wallet_address')
+                                                <span style="color: red;">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+ <div class="form-row">
+                                        <div class="form-group col-md-12">
+                                            <label>wallet private key </label>
+                                            <input type="text" name="wallet_private_key" class="form-control"
+                                                value="{{ $user->wallet_private_key }}" />
+                                            @error('wallet_private_key')
+                                                <span style="color: red;">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+
+
                                     <div class="form-row">
                                         <div class="form-group col-md-12">
                                             <label>Password</label>
@@ -185,18 +215,11 @@
                                                         {{ $user->phone }}
                                                     @endif
                                                 </td>
-                                                <td>TRX {{ $deposite->amount }}</td>
-                                                @php
-                                                    $order = App\Models\Order::where('order_number', $deposite->order_number)->first();
-                                                @endphp
-                                                @if (isset($order))
-                                                    @php
-                                                        $addresstrx = App\Models\Addresstrx::where('id', $order->txid)->first();
-                                                    @endphp
-                                                    @if (isset($addresstrx))
-                                                        <td>{{ $addresstrx->address_base58 }}</td>
-                                                    @endif
-                                                @endif
+                                                <td>{{   $user->crypto_address }}  </td>
+                                                
+                                                        <td>${{ $deposite->amount }}</td>
+                                                  
+                                             
 
                                                 <td>{{ $deposite->txid }}</td>
                                                 <td>{{ isset($deposite->created_at) ? $deposite->created_at->diffForHumans() : '' }}

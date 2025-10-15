@@ -21,7 +21,7 @@
         </div>
 
 
-        <form action="{{ url('user/trcaddress-update') }}" method="post">
+        <form action="{{ url('user/bep20address-update') }}" method="post">
             @csrf
             <div class="withdraw-page-sc">
                 <div class="content withdraw-page-top">
@@ -42,7 +42,7 @@
                     <p>{{ __('lang.login_password') }}</p>
                 </div>
                 <div class="content input-ammount-box">
-                    <input type="password" name="password" class="form-control" placeholder="{{ __('lang.enter_password') }}" required>
+                    <input type="password" name="crypto_password" class="form-control" placeholder="{{ __('lang.enter_password') }}" required>
                 </div>
 
                 <div class="content button-cash">

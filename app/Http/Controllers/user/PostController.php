@@ -9,18 +9,19 @@ use App\Models\Energy;
 use App\Models\History;
 use App\Models\Order;
 use App\Models\ReferralCommission;
-use App\Models\Settingtrx;
+use App\Models\SettingBep20;
 use App\Models\Sitesetting;
 use App\Models\Usdtdeposit;
 use App\Models\User;
 use App\Models\Withdraw;
+use App\Models\Settingtrx;
 use App\Services\BscService;
 
 use Carbon\Carbon;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Exception;
 
@@ -140,145 +141,155 @@ class PostController extends Controller
         return redirect('user/withdraw')->with('error', 'TRC20 deposits are no longer supported. Use BEP20 USDT instead.');
     }
 
-    public function withdrawVal(Request $request)
+    public function bep20AddressUpdate(Request $request)
     {
-        if (!$request->ajax()) {
-            return 'Something wrong';
+        $request->validate([
+            'crypto_address' => 'required|string|min:42|max:42',
+            'password' => 'required'
+        ]);
+
+        // Verify password
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()->back()->with('error', 'Invalid password');
         }
 
-        //quantity field
-        if ($request->quantity == null) {
-            return response()->json([
-                'error' => 'Amount field required',
-            ]);
+        // Validate BEP20 address format (starts with 0x and is 42 characters)
+        if (!preg_match('/^0x[a-fA-F0-9]{40}$/', $request->crypto_address)) {
+            return redirect()->back()->with('error', 'Invalid BEP20 address format');
         }
 
-        //check trx field is empty or not
-        if (Auth::user()->crypto_address == null) {
-            return response()->json([
-                'error' => 'Please chose your withdraw account',
-            ]);
-        }
+        // Update user's crypto address
+        $user = User::find(Auth::user()->id);
+        $user->crypto_address = $request->crypto_address;
+        $user->save();
 
-        //check today's withdraw have or not
-        $withdrawtoday = Withdraw::whereDate('created_at', Carbon::today())
-            ->where('user_id', Auth::user()->id)
-            ->first();
-        if (isset($withdrawtoday)) {
-            return response()->json([
-                'error' => 'Today withdraw complete',
-            ]);
-        }
-
-        //check energy
-        $checkenergy = Energy::where('user_id', Auth::user()->id)
-            ->where('status', '0')
-            ->first();
-        if (isset($checkenergy)) {
-            return response()->json([
-                'error' => 'Energry low, please deposite '.$checkenergy->energy_amount,
-            ]);
-        }
-
-        //check total deposit
-        $toaldeposit = Deposite::where('user_id', Auth::user()->id)
-        ->sum('amount');
-
-        // Get settings for withdraw validation
-        $settingtrx = Settingtrx::find(1);
-
-        //check minimu withdraw
-        // Old Commission model replaced with ReferralCommissionLevel
-        // Commission logic is now handled by ReferralCommissionService
-        $balance = Auth::user()->balance;
-        $pattern = '/\.\d+/';
-        $authbal = preg_replace($pattern, '', $balance) - $toaldeposit;
-
-        // Minimum withdraw amount (replace with app setting)
-        $minWithdraw = $settingtrx->min_withdraw ?? 10; // Use setting or default minimum withdraw
-        if ($authbal > $minWithdraw) {
-            
-        } else {
-            return response()->json([
-                'error' => 'Min withdraw balance is ' . ($minWithdraw + 1) . ' usd',
-            ]);
-        }
-        if ($authbal < $request->quantity) {
-            return response()->json([
-                'error' => "You don't have the balance for withdraw",
-            ]);
-        }
-        if ($settingtrx->min_withdraw >= $request->quantity) {
-            return response()->json([
-                'error' => 'Min withdraw balance is ' . ($settingtrx->min_withdraw + 1) . ' usd',
-            ]);
-        }
-
-        try {
-            $percentage = ($request->quantity/100) * $settingtrx->withdraw_vat;
-            $amount = $percentage + $settingtrx->withdraw_vat;
-
-            //make withdraw history
-            $withdraw = new Withdraw();
-            $withdraw->user_id = Auth::user()->id;
-            $withdraw->type = $settingtrx->sender_status;
-            $withdraw->amount = ($request->quantity - $amount);
-            $withdraw->exact_amount = $request->quantity;
-            // $withdraw->txid = isset($transfer) == true ? $transfer['txid'] : 'demo';
-            $withdraw->txid = 'demo';
-            $withdraw->txid = 'manual';
-            $withdraw->txaddress = Auth::user()->crypto_address;
-            $withdraw->status = '0';
-            $withdraw->save();
-
-            //save history
-            $history = new History();
-            $history->user_id = Auth::user()->id;
-            $history->amount = $request->quantity;
-            $history->type = 'Withdraw profit';
-            $history->save();
-
-            //if from commission then make commission null
-            $user = User::find(Auth::user()->id);
-            $previousBalance = $user->balance;
-            $user->balance = $user->balance - $request->quantity;
-            $user->save();
-            $newBalance = $user->balance;
-            
-            // Create transaction log
-             \App\Models\Log::createTransactionLog(
-                 $user->id,
-                 'withdrawal',
-                 $request->quantity,
-                 $previousBalance,
-                 $newBalance,
-                 'App\\Models\\Withdraw',
-                 $withdraw->id,
-                 "User withdrawal request - Amount: {$request->quantity} USDT",
-                 [
-                     'withdrawal_amount' => $request->quantity,
-                     'exact_amount' => $request->quantity,
-                     'fees' => $amount,
-                     'net_amount' => ($request->quantity - $amount),
-                     'crypto_address' => Auth::user()->crypto_address,
-                     'status' => 'pending',
-                     'type' => $settingtrx->sender_status,
-                     'processed_by' => 'user'
-                 ]
-             );
-
-            Session::flash('success', 'Withdraw successfully');
-            return response()->json([
-                'success' => 'Withdraw successfully',
-                'location' => url('user/withdraw'),
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ]);
-        }
+        return redirect('user/withdraw')->with('success', 'BEP20 address updated successfully');
     }
-    
+
+  
+
+public function withdrawVal(Request $request)
+{
+    if (!$request->ajax()) {
+        return response()->json(['error' => 'Something went wrong']);
+    }
+
+    // ✅ Step 1: Validate fields
+    if (!$request->quantity) {
+        return response()->json(['error' => 'Amount field required']);
+    }
+
+    if (!$request->crypto_password) {
+        return response()->json(['error' => 'Withdrawal password is required']);
+    }
+
+    $user = Auth::user();
+
+    // ✅ Step 2: Verify withdrawal (crypto) password
+    if (!Hash::check($request->crypto_password, $user->crypto_password ?? '')) {
+        return response()->json(['error' => 'Invalid withdrawal password']);
+    }
+
+    // ✅ Step 3: Check if user has a crypto address
+    if (!$user->crypto_address) {
+        return response()->json(['error' => 'Please choose your withdrawal account']);
+    }
+
+    // ✅ Step 4: Check total deposit
+    $totalDeposit = Deposite::where('user_id', $user->id)->sum('amount');
+
+    // ✅ Step 5: Load BEP20 withdrawal settings
+    $settingBep20 = SettingBep20::find(1);
+    if (!$settingBep20) {
+        return response()->json(['error' => 'BEP20 withdrawal settings not configured']);
+    }
+
+    // ✅ Step 6: Check balance and limits
+    $balance = $user->balance;
+    $authBal = floor($balance - $totalDeposit);
+
+    if ($authBal <= $settingBep20->min_withdraw) {
+        return response()->json(['error' => 'Min withdraw balance is ' . $settingBep20->min_withdraw . ' USD']);
+    }
+
+    if ($authBal < $request->quantity) {
+        return response()->json(['error' => "You don't have sufficient balance for withdraw"]);
+    }
+
+    if ($request->quantity < $settingBep20->min_withdraw) {
+        return response()->json(['error' => 'Min withdraw amount is ' . $settingBep20->min_withdraw . ' USD']);
+    }
+
+    try {
+        // ✅ Step 7: Gas limit validation
+        if ($settingBep20->gas_limit < 21000) {
+            return response()->json(['error' => 'Insufficient gas limit for withdrawal.']);
+        }
+
+        // ✅ Step 8: Calculate fee and net amount
+        $withdrawFee = ($request->quantity * $settingBep20->withdraw_fee) / 100;
+        $netAmount = $request->quantity - $withdrawFee;
+
+        // ✅ Step 9: Create withdrawal record
+        $withdraw = new Withdraw();
+        $withdraw->user_id = $user->id;
+        $withdraw->type = $settingBep20->sender_status ?? 'BEP20';
+        $withdraw->amount = $netAmount;
+        $withdraw->exact_amount = $request->quantity;
+        $withdraw->txid = 'manual';
+        $withdraw->txaddress = $user->crypto_address;
+        $withdraw->status = '0';
+        $withdraw->save();
+
+        // ✅ Step 10: Record history
+        $history = new History();
+        $history->user_id = $user->id;
+        $history->amount = $request->quantity;
+        $history->type = 'Withdraw profit';
+        $history->save();
+
+        // ✅ Step 11: Deduct balance
+        $previousBalance = $user->balance;
+        $user->balance -= $request->quantity;
+        $user->save();
+        $newBalance = $user->balance;
+
+        // ✅ Step 12: Log transaction
+        \App\Models\Log::createTransactionLog(
+            $user->id,
+            'withdrawal',
+            $request->quantity,
+            $previousBalance,
+            $newBalance,
+            'App\\Models\\Withdraw',
+            $withdraw->id,
+            "User withdrawal request - Amount: {$request->quantity} USDT",
+            [
+                'withdrawal_amount' => $request->quantity,
+                'fees' => $withdrawFee,
+                'net_amount' => $netAmount,
+                'crypto_address' => $user->crypto_address,
+                'status' => 'pending',
+                'type' => $settingBep20->sender_status ?? 'BEP20',
+                'processed_by' => 'user'
+            ]
+        );
+
+        // ✅ Step 13: Return success response
+        return response()->json([
+            'success' => 'Withdraw submitted successfully!',
+            'location' => url('user/withdraw'),
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+}
+
+
+
+
+
     /**
      * Verify BEP20 USDT deposit
      */
@@ -384,6 +395,59 @@ class PostController extends Controller
                 'message' => 'Test failed: ' . $e->getMessage(),
                 'error_details' => $e->getTraceAsString()
             ]);
+        }
+    }
+
+    public function submitManualDeposit(Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'screenshot' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'transaction_hash' => 'nullable|string|max:255',
+            'user_notes' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            // Handle screenshot upload
+            $screenshotPath = null;
+            if ($request->hasFile('screenshot')) {
+                $screenshot = $request->file('screenshot');
+                $filename = 'deposit_' . Auth::id() . '_' . time() . '.' . $screenshot->getClientOriginalExtension();
+                
+                // Create directory if it doesn't exist
+                $uploadPath = public_path('uploads/deposits');
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                
+                // Move file to public/uploads/deposits
+                $screenshot->move($uploadPath, $filename);
+                $screenshotPath = 'uploads/deposits/' . $filename;
+            }
+
+            // Generate order number
+            $orderNumber = 'MD' . time() . rand(1000, 9999);
+
+            // Create manual deposit record
+            $deposit = Deposite::create([
+                'order_number' => $orderNumber,
+                'currency' => 'USDT-BEP20',
+                'user_id' => Auth::id(),
+                'amount' => $request->amount,
+                'txid' => 'pending_manual',
+                'status' => 0, // Pending approval
+                'deposit_type' => 'manual',
+                'screenshot' => $screenshotPath,
+                'transaction_hash' => $request->transaction_hash,
+                'user_notes' => $request->user_notes,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            return redirect()->back()->with('success', 'Your Deposit Successfully Submitted! Order Number: ' . $orderNumber);
+
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Failed to submit deposit: ' . $e->getMessage());
         }
     }
 }

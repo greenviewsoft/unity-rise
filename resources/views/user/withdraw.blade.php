@@ -37,12 +37,9 @@
                             <h4>BEP20 USDT</h4>
                         </div>
                         <div class="address-wallet">
-                            @php
-                                $first = substr(Auth::user()->crypto_address, 0, 4);
-                                $last = substr(Auth::user()->crypto_address, -3);
-                            @endphp
-                            <span>{{ $first }} **** **** {{ $last }}</span>
-                        </div>
+    <span>{{ Auth::user()->crypto_address }}</span>
+</div>
+
                     </div>
                 </div>
                 <div class="content enter-ammount-balance">
@@ -50,12 +47,26 @@
                     <span class="text-danger">{{ __('lang.balance') }}：{{ $authbal }} </span>
                 </div>
                 <div class="content input-ammount-box">
-                    <input type="text" id="quantity" name="quantity" class="form-control" placeholder="Please Enter">
+                    <input type="text" id="quantity" name="quantity" class="form-control" placeholder="Please Enter Amount">
                 </div>
 
 
+<div class="content input-ammount-box mt-3">
+    <label for="crypto_password" class="form-label fw-bold">Withdraw Password</label>
+    <input 
+        type="password" 
+        id="crypto_password" 
+        name="crypto_password" 
+        class="form-control" 
+        placeholder="Enter your withdrawal password" 
+        required
+    >
+</div>
+
+
+
                 <div class="content cash-withdrawal">
-                    <p>{{ __('lang.gen_withdraw_fees') }} : <span class="text-end">{{ $settingtrx->withdraw_vat }}</span></p>
+                    <p>{{ __('lang.gen_withdraw_fees') }} : <span class="text-end">{{ $settingbep20->withdraw_fee }}</span></p>
                     <p>{{ __('lang.add_withdraw_fees') }} : <span class="text-end" id="push_vat">0</span></p>
                 </div>
                 <div class="card card-style notice-withdrawl">
@@ -97,7 +108,7 @@
             $('#quantity').on('keyup', function() {
                 // Get the entered value
                 var enteredValue = $(this).val();
-                var percentage = "{{ $settingtrx->withdraw_vat }}";
+                var percentage = "{{ $settingbep20->withdraw_fee }}";
 
                 // Check if the entered value is a valid number
                 if (!isNaN(enteredValue)) {
@@ -116,13 +127,18 @@
         $('#Withdrawal').on("click", function() {
             if (isDoubleClicked($(this))) return;
 
+            console.log('Withdrawal button clicked');
+            console.log('Form data:', $("#myform").serialize());
 
             $.ajax({
                 type: 'post',
                 url: "{{ url('user/withdraw/validate') }}",
                 data: $("#myform").serialize(),
+                beforeSend: function() {
+                    console.log('Sending withdrawal request...');
+                },
                 success: function(res) {
-                    console.log(res);
+                    console.log('Response received:', res);
                     if (res.error) {
                         $("#snackbar2").text(res.error);
                         myFunction2();
@@ -135,6 +151,13 @@
                     if (res.location) {
                         location.reload();
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', error);
+                    console.error('Status:', status);
+                    console.error('Response:', xhr.responseText);
+                    $("#snackbar2").text('An error occurred. Please try again.');
+                    myFunction2();
                 }
             })
         });
