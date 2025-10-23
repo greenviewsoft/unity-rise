@@ -130,20 +130,7 @@ Route::group(['middleware' => ['auth', 'admin'], 'as' => 'admin.', 'prefix' => '
     Route::get('events/delete/{id}', 'EventController@delete');
     Route::get('cron/delete/{id}', 'CronController@delete');
 
-    //for quote profite contorller
-    // Route::get('quote_profite', 'QuoteprofitController@quoteProtie');
-    // Route::get('quote/edit/{id}', 'QuoteprofitController@quoteEdit');
-    // Route::post('quote/update', 'QuoteprofitController@quoteUpdate');
-    // Route::get('profite/edit/{id}', 'QuoteprofitController@profiteEdit');
-    // Route::post('profite/update', 'QuoteprofitController@profiteUpdate');
-    // Route::get('withdraw/create', 'QuoteprofitController@withdrawCreate');
-    // Route::post('profite/store', 'QuoteprofitController@profitStore');
-    // Route::get('quote/create', 'QuoteprofitController@addQutoe');
-    // Route::post('quote/store', 'QuoteprofitController@quoteStore');
-    // Route::get('address', 'QuoteprofitController@address');
-    // Route::get('address/details/{id}', 'QuoteprofitController@addressDetails');
     
-
     Route::resource('user', 'UserController');
 
     Route::resource('announcement', 'AnnouncementController');
