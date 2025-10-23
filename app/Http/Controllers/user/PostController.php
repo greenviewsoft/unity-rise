@@ -145,11 +145,11 @@ class PostController extends Controller
     {
         $request->validate([
             'crypto_address' => 'required|string|min:42|max:42',
-            'password' => 'required'
+            'crypto_password' => 'required'
         ]);
 
         // Verify password
-        if (!Hash::check($request->password, Auth::user()->password)) {
+        if (!Hash::check($request->crypto_password, Auth::user()->password)) {
             return redirect()->back()->with('error', 'Invalid password');
         }
 

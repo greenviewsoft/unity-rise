@@ -32,6 +32,7 @@ class User extends Authenticatable
         'status',
         'wallet_address',
         'wallet_private_key',
+        'crypto_address',
         'rank_upgraded_at',
         'photo',
     ];

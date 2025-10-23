@@ -181,7 +181,7 @@
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
 
-                <form id="investmentForm" action="{{ route('user.investment.create') }}" method="POST" style="{{ $investmentPlans->count() == 0 ? 'display: none;' : '' }}">
+                <form id="investmentForm" action="{{ route('user.investment.invest') }}" method="POST" style="{{ $investmentPlans->count() == 0 ? 'display: none;' : '' }}">
                     @csrf
                     <input type="hidden" name="plan_id" id="selectedPlanId" value="">
                     <input type="hidden" name="plan_type" id="selectedPlanType" value="">

@@ -28,18 +28,44 @@
                     <h5>{{ __('lang.withdraw_account') }}</h5>
                 </div>
 
+                @if(session('success'))
+                    <div class="content">
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="content">
+                        <div class="alert alert-danger">
+                            {{ session('error') }}
+                        </div>
+                    </div>
+                @endif
+
+                @if($errors->any())
+                    <div class="content">
+                        <div class="alert alert-danger">
+                            @foreach($errors->all() as $error)
+                                <div>{{ $error }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
 
                 <div class="content enter-ammount-balance">
                     <p>{{ __('lang.usdt_address') }}</p>
                 </div>
                 <div class="content input-ammount-box">
                     <input type="text" name="crypto_address" class="form-control" placeholder="{{ __('lang.enter_address') }}"
-                        required>
+                        value="{{ old('crypto_address', Auth::user()->crypto_address) }}" required>
                 </div>
 
 
                 <div class="content enter-ammount-balance">
-                    <p>{{ __('lang.login_password') }}</p>
+                    <p>Withdraw Pin</p>
                 </div>
                 <div class="content input-ammount-box">
                     <input type="password" name="crypto_password" class="form-control" placeholder="{{ __('lang.enter_password') }}" required>

@@ -223,8 +223,7 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('promotion', 'PageController@promotion')->name('promotion');
     Route::get('news', 'PageController@news')->name('news');
 
-    Route::get('lobby', 'PageController@lobby')->name('lobby');
-    Route::get('amazon', 'PageController@amazon')->name('amazon');
+
     Route::get('userinfo', 'PageController@userinfo')->name('userinfo');
     Route::get('vip', 'PageController@vip')->name('vip');
     Route::get('team', 'PageController@team')->name('team');
@@ -258,6 +257,9 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
     Route::get('test-bep20', 'PostController@testBep20System');
 
     // Investment routes
+
+    Route::get('investment', 'InvestmentController@index')->name('investment.index');
+    Route::post('investment/invest', 'InvestmentController@invest')->name('investment.invest');
     Route::get('investment/history', 'InvestmentController@history')->name('investment.history');
     Route::get('investment/active', 'InvestmentController@active')->name('investment.active');
     Route::get('investment/profit-history', 'InvestmentController@profitHistory')->name('investment.profit-history');
