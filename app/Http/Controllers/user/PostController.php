@@ -89,7 +89,7 @@ class PostController extends Controller
         try {
             $user = User::find(Auth::user()->id);
             $bscService = new BscService();
-            
+
             // Generate wallet if user doesn't have one
             if (!$user->wallet_address) {
                 $wallet = $bscService->generateWallet();
@@ -97,12 +97,12 @@ class PostController extends Controller
                 $user->wallet_private_key = encrypt($wallet['private_key']);
                 $user->save();
             }
-            
+
             // Create deposit record
             $date = Carbon::now()->format('YmdHis');
             $randomNumber = str_pad(mt_rand(1, 99999), 3, '0', STR_PAD_LEFT);
             $orderNumber = 'BEP' . $date . $randomNumber;
-            
+
             $order = new Order();
             $order->user_id = Auth::user()->id;
             $order->method = 'BEP20 USDT';
@@ -112,23 +112,23 @@ class PostController extends Controller
             $order->wallet_address = $user->wallet_address;
             $order->status = '0';
             $order->save();
-            
+
             Session::put('bep20_order_id', $order->id);
             Session::put('bep20_wallet_address', $user->wallet_address);
             Session::put('bep20_amount', $request->amount);
-            
+
             $user->currency = $request->currency;
             $user->save();
-            
+
             return redirect('user/bep20-payment');
-            
+
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'Failed to process BEP20 deposit: ' . $e->getMessage()
             ]);
         }
     }
-    
+
     public function depositeInformation(Request $request)
     {
         // Only handle BEP20 USDT verification
@@ -162,129 +162,128 @@ class PostController extends Controller
         $user = User::find(Auth::user()->id);
         $user->crypto_address = $request->crypto_address;
         $user->save();
-
         return redirect('user/withdraw')->with('success', 'BEP20 address updated successfully');
     }
 
-  
 
-public function withdrawVal(Request $request)
-{
-    if (!$request->ajax()) {
-        return response()->json(['error' => 'Something went wrong']);
-    }
 
-    // ✅ Step 1: Validate fields
-    if (!$request->quantity) {
-        return response()->json(['error' => 'Amount field required']);
-    }
-
-    if (!$request->crypto_password) {
-        return response()->json(['error' => 'Withdrawal password is required']);
-    }
-
-    $user = Auth::user();
-
-    // ✅ Step 2: Verify withdrawal (crypto) password
-    if (!Hash::check($request->crypto_password, $user->crypto_password ?? '')) {
-        return response()->json(['error' => 'Invalid withdrawal password']);
-    }
-
-    // ✅ Step 3: Check if user has a crypto address
-    if (!$user->crypto_address) {
-        return response()->json(['error' => 'Please choose your withdrawal account']);
-    }
-
-    // ✅ Step 4: Check total deposit
-    $totalDeposit = Deposite::where('user_id', $user->id)->sum('amount');
-
-    // ✅ Step 5: Load BEP20 withdrawal settings
-    $settingBep20 = SettingBep20::find(1);
-    if (!$settingBep20) {
-        return response()->json(['error' => 'BEP20 withdrawal settings not configured']);
-    }
-
-    // ✅ Step 6: Check balance and limits
-    $balance = $user->balance;
-    $authBal = floor($balance - $totalDeposit);
-
-    if ($authBal <= $settingBep20->min_withdraw) {
-        return response()->json(['error' => 'Min withdraw balance is ' . $settingBep20->min_withdraw . ' USD']);
-    }
-
-    if ($authBal < $request->quantity) {
-        return response()->json(['error' => "You don't have sufficient balance for withdraw"]);
-    }
-
-    if ($request->quantity < $settingBep20->min_withdraw) {
-        return response()->json(['error' => 'Min withdraw amount is ' . $settingBep20->min_withdraw . ' USD']);
-    }
-
-    try {
-        // ✅ Step 7: Gas limit validation
-        if ($settingBep20->gas_limit < 21000) {
-            return response()->json(['error' => 'Insufficient gas limit for withdrawal.']);
+    public function withdrawVal(Request $request)
+    {
+        if (!$request->ajax()) {
+            return response()->json(['error' => 'Something went wrong']);
         }
 
-        // ✅ Step 8: Calculate fee and net amount
-        $withdrawFee = ($request->quantity * $settingBep20->withdraw_fee) / 100;
-        $netAmount = $request->quantity - $withdrawFee;
+        // ✅ Step 1: Validate fields
+        if (!$request->quantity) {
+            return response()->json(['error' => 'Amount field required']);
+        }
 
-        // ✅ Step 9: Create withdrawal record
-        $withdraw = new Withdraw();
-        $withdraw->user_id = $user->id;
-        $withdraw->type = $settingBep20->sender_status ?? 'BEP20';
-        $withdraw->amount = $netAmount;
-        $withdraw->exact_amount = $request->quantity;
-        $withdraw->txid = 'manual';
-        $withdraw->txaddress = $user->crypto_address;
-        $withdraw->status = '0';
-        $withdraw->save();
+        if (!$request->crypto_password) {
+            return response()->json(['error' => 'Withdrawal password is required']);
+        }
 
-        // ✅ Step 10: Record history
-        $history = new History();
-        $history->user_id = $user->id;
-        $history->amount = $request->quantity;
-        $history->type = 'Withdraw profit';
-        $history->save();
+        $user = Auth::user();
 
-        // ✅ Step 11: Deduct balance
-        $previousBalance = $user->balance;
-        $user->balance -= $request->quantity;
-        $user->save();
-        $newBalance = $user->balance;
+        // ✅ Step 2: Verify withdrawal (crypto) password
+        if (!Hash::check($request->crypto_password, $user->crypto_password ?? '')) {
+            return response()->json(['error' => 'Invalid withdrawal password']);
+        }
 
-        // ✅ Step 12: Log transaction
-        \App\Models\Log::createTransactionLog(
-            $user->id,
-            'withdrawal',
-            $request->quantity,
-            $previousBalance,
-            $newBalance,
-            'App\\Models\\Withdraw',
-            $withdraw->id,
-            "User withdrawal request - Amount: {$request->quantity} USDT",
-            [
-                'withdrawal_amount' => $request->quantity,
-                'fees' => $withdrawFee,
-                'net_amount' => $netAmount,
-                'crypto_address' => $user->crypto_address,
-                'status' => 'pending',
-                'type' => $settingBep20->sender_status ?? 'BEP20',
-                'processed_by' => 'user'
-            ]
-        );
+        // ✅ Step 3: Check if user has a crypto address
+        if (!$user->crypto_address) {
+            return response()->json(['error' => 'Please choose your withdrawal account']);
+        }
 
-        // ✅ Step 13: Return success response
-        return response()->json([
-            'success' => 'Withdraw submitted successfully!',
-            'location' => url('user/withdraw'),
-        ]);
+        // ✅ Step 4: Check total deposit
+        $totalDeposit = Deposite::where('user_id', $user->id)->sum('amount');
 
-    } catch (Exception $e) {
-        return response()->json(['error' => $e->getMessage()]);
+        // ✅ Step 5: Load BEP20 withdrawal settings
+        $settingBep20 = SettingBep20::find(1);
+        if (!$settingBep20) {
+            return response()->json(['error' => 'BEP20 withdrawal settings not configured']);
+        }
+
+        // ✅ Step 6: Check balance and limits
+        $balance = $user->balance;
+        $authBal = floor($balance - $totalDeposit);
+
+        if ($authBal <= $settingBep20->min_withdraw) {
+            return response()->json(['error' => 'Min withdraw balance is ' . $settingBep20->min_withdraw . ' USD']);
+        }
+
+        if ($authBal < $request->quantity) {
+            return response()->json(['error' => "You don't have sufficient balance for withdraw"]);
+        }
+
+        if ($request->quantity < $settingBep20->min_withdraw) {
+            return response()->json(['error' => 'Min withdraw amount is ' . $settingBep20->min_withdraw . ' USD']);
+        }
+
+        try {
+            // ✅ Step 7: Gas limit validation
+            if ($settingBep20->gas_limit < 21000) {
+                return response()->json(['error' => 'Insufficient gas limit for withdrawal.']);
+            }
+
+            // ✅ Step 8: Calculate fee and net amount
+            $withdrawFee = ($request->quantity * $settingBep20->withdraw_fee) / 100;
+            $netAmount = $request->quantity - $withdrawFee;
+
+            // ✅ Step 9: Create withdrawal record
+            $withdraw = new Withdraw();
+            $withdraw->user_id = $user->id;
+            $withdraw->type = $settingBep20->sender_status ?? 'BEP20';
+            $withdraw->amount = $netAmount;
+            $withdraw->exact_amount = $request->quantity;
+            $withdraw->txid = 'manual';
+            $withdraw->txaddress = $user->crypto_address;
+            $withdraw->status = '0';
+            $withdraw->save();
+
+            // ✅ Step 10: Record history
+            $history = new History();
+            $history->user_id = $user->id;
+            $history->amount = $request->quantity;
+            $history->type = 'Withdraw profit';
+            $history->save();
+
+            // ✅ Step 11: Deduct balance
+            $previousBalance = $user->balance;
+            $user->balance -= $request->quantity;
+            $user->save();
+            $newBalance = $user->balance;
+
+            // ✅ Step 12: Log transaction
+            \App\Models\Log::createTransactionLog(
+                $user->id,
+                'withdrawal',
+                $request->quantity,
+                $previousBalance,
+                $newBalance,
+                'App\\Models\\Withdraw',
+                $withdraw->id,
+                "User withdrawal request - Amount: {$request->quantity} USDT",
+                [
+                    'withdrawal_amount' => $request->quantity,
+                    'fees' => $withdrawFee,
+                    'net_amount' => $netAmount,
+                    'crypto_address' => $user->crypto_address,
+                    'status' => 'pending',
+                    'type' => $settingBep20->sender_status ?? 'BEP20',
+                    'processed_by' => 'user'
+                ]
+            );
+
+            // ✅ Step 13: Return success response
+            return response()->json([
+                'success' => 'Withdraw submitted successfully!',
+                'location' => url('user/withdraw'),
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
     }
-}
 
 
 
@@ -293,73 +292,73 @@ public function withdrawVal(Request $request)
     /**
      * Verify BEP20 USDT deposit
      */
-  public function verifyBep20Deposit(Request $request)
-{
-    try {
-        $orderId = Session::get('bep20_order_id');
-        $order = Order::find($orderId);
+    public function verifyBep20Deposit(Request $request)
+    {
+        try {
+            $orderId = Session::get('bep20_order_id');
+            $order = Order::find($orderId);
 
-        if (!$order) {
-            return response()->json(['error' => 'Order not found']);
-        }
+            if (!$order) {
+                return response()->json(['error' => 'Order not found']);
+            }
 
-        $bep20Service = new \App\Services\Bep20DepositService();
-        $result = $bep20Service->verifyManualDeposit($order);
+            $bep20Service = new \App\Services\Bep20DepositService();
+            $result = $bep20Service->verifyManualDeposit($order);
 
-        if ($result['success']) {
-            Session::forget(['bep20_order_id', 'bep20_wallet_address', 'bep20_amount']);
-            
+            if ($result['success']) {
+                Session::forget(['bep20_order_id', 'bep20_wallet_address', 'bep20_amount']);
+
+                return response()->json([
+                    'success' => $result['message'],
+                    'amount' => $result['amount'],
+                    'tx_hash' => $result['tx_hash'],
+                    'new_balance' => $result['new_balance']
+                ]);
+            } else {
+                return response()->json([
+                    'error' => $result['message']
+                ]);
+            }
+
+        } catch (Exception $e) {
             return response()->json([
-                'success' => $result['message'],
-                'amount' => $result['amount'],
-                'tx_hash' => $result['tx_hash'],
-                'new_balance' => $result['new_balance']
-            ]);
-        } else {
-            return response()->json([
-                'error' => $result['message']
+                'error' => 'Verification failed: ' . $e->getMessage()
             ]);
         }
-
-    } catch (Exception $e) {
-        return response()->json([
-            'error' => 'Verification failed: ' . $e->getMessage()
-        ]);
     }
-}
 
 
     public function testBep20System()
     {
         try {
             $bscService = new BscService();
-            
+
             // Test wallet generation
             $wallet = $bscService->generateWallet();
-            
+
             // Test USDT balance check
             $usdtBalance = $bscService->getUsdtBalance($wallet['address']);
-            
+
             // Test BNB balance check
             $bnbBalance = $bscService->getBnbBalance($wallet['address']);
-            
+
             // Test gas sufficiency check
             $hasSufficientGas = $bscService->hasSufficientGas($wallet['address']);
-            
+
             // Test address validation
             $isValid = $bscService->isValidAddress($wallet['address']);
-            
+
             // Test admin wallet configuration
             $adminWallet = env('BSC_ADMIN_WALLET_ADDRESS');
             $adminPrivateKey = env('BSC_ADMIN_PRIVATE_KEY');
             $adminConfigured = !empty($adminWallet) && !empty($adminPrivateKey);
-            
+
             // Test admin wallet BNB balance if configured
             $adminBnbBalance = null;
             if ($adminConfigured) {
                 $adminBnbBalance = $bscService->getBnbBalance($adminWallet);
             }
-            
+
             return response()->json([
                 'success' => true,
                 'test_results' => [
@@ -382,13 +381,13 @@ public function withdrawVal(Request $request)
                 ],
                 'gas_fee_system' => [
                     'status' => $adminConfigured ? 'Ready' : 'Not Configured',
-                    'note' => $adminConfigured ? 
-                        'Admin wallet can automatically send BNB for gas fees' : 
+                    'note' => $adminConfigured ?
+                        'Admin wallet can automatically send BNB for gas fees' :
                         'Please configure BSC_ADMIN_WALLET_ADDRESS and BSC_ADMIN_PRIVATE_KEY in .env'
                 ],
                 'message' => 'BEP20 system with gas fee support test completed successfully'
             ]);
-            
+
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -413,13 +412,13 @@ public function withdrawVal(Request $request)
             if ($request->hasFile('screenshot')) {
                 $screenshot = $request->file('screenshot');
                 $filename = 'deposit_' . Auth::id() . '_' . time() . '.' . $screenshot->getClientOriginalExtension();
-                
+
                 // Create directory if it doesn't exist
                 $uploadPath = public_path('uploads/deposits');
                 if (!file_exists($uploadPath)) {
                     mkdir($uploadPath, 0755, true);
                 }
-                
+
                 // Move file to public/uploads/deposits
                 $screenshot->move($uploadPath, $filename);
                 $screenshotPath = 'uploads/deposits/' . $filename;
