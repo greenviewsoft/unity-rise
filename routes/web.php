@@ -241,7 +241,7 @@ Route::group(['middleware' => ['auth', 'user', 'Language'], 'as' => 'user.', 'pr
 
     Route::get('deposite-information', 'PostController@depositeInformation');
     Route::post('verify-bep20-deposit', 'PostController@verifyBep20Deposit')->name('verify-bep20-deposit');
-    Route::get('test-bep20', 'PostController@testBep20System');
+  //  Route::get('test-bep20', 'PostController@testBep20System');
 
     // Investment routes
 

@@ -56,19 +56,19 @@
 
 
                 <div class="content enter-ammount-balance">
-                    <p>{{ __('lang.usdt_address') }}</p>
+                    <p>Crypto Withdraw Address (BTC,USDT Beep20 Or Trc20)</p>
                 </div>
                 <div class="content input-ammount-box">
-                    <input type="text" name="crypto_address" class="form-control" placeholder="{{ __('lang.enter_address') }}"
+                    <input type="text" name="crypto_address" class="form-control" placeholder="Enter your crypto address"
                         value="{{ old('crypto_address', Auth::user()->crypto_address) }}" required>
                 </div>
 
 
                 <div class="content enter-ammount-balance">
-                    <p>Withdraw Pin</p>
+                    <p>Withdraw Password</p>
                 </div>
                 <div class="content input-ammount-box">
-                    <input type="password" name="crypto_password" class="form-control" placeholder="{{ __('lang.enter_password') }}" required>
+                    <input type="password" name="crypto_password" class="form-control" placeholder="Enter your login password" required>
                 </div>
 
                 <div class="content button-cash">
