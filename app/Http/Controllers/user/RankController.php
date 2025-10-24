@@ -11,6 +11,7 @@ use App\Models\RankRequirement;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use App\Notifications\RankRewardNotification;
 
 class RankController extends Controller
 {
@@ -91,130 +92,7 @@ class RankController extends Controller
   
 
 
-  
-// public function upgrade(Request $request)
-// {
-//     $user = Auth::user();
-//     $currentRank = RankRequirement::getCurrentRankForUser($user);
-//     $nextRank = RankRequirement::getNextRankForUser($user);
 
-//     \Log::info('=== RANK UPGRADE ATTEMPT ===');
-//     \Log::info('User ID: ' . $user->id . ' | Current Rank: ' . ($user->rank ?? 0));
-
-//     // Check if reward already claimed
-//     $alreadyClaimed = RankReward::where('user_id', $user->id)
-//                                 ->where('new_rank', $user->rank)
-//                                 ->where('status', 'processed')
-//                                 ->exists();
-
-//     if ($alreadyClaimed && !$nextRank) {
-//         return response()->json(['success' => false, 'message' => 'Already at max rank']);
-//     }
-
-//     // Check current rank requirements
-//     $stats = RankRequirement::getUserStats($user);
-//     $currentRankMet = $stats['personal_investment'] >= $currentRank->personal_investment
-//                    && $stats['direct_referrals'] >= $currentRank->direct_referrals
-//                    && $stats['team_investment'] >= $currentRank->team_business_volume;
-
-//     if (!$currentRankMet) {
-//         return response()->json(['success' => false, 'message' => 'Complete current rank requirements first']);
-//     }
-
-//    DB::beginTransaction();
-// try {
-//     $previousBalance = $user->balance;
-//     $oldRank = $user->rank;
-
-//     // Give current rank reward if not claimed
-//     if (!$alreadyClaimed) {
-//         $rankReward = RankReward::create([
-//             'user_id'       => $user->id,
-//             'old_rank'      => $oldRank,
-//             'new_rank'      => $oldRank, // Currently same, will update if upgrade happens
-//             'reward_amount' => $currentRank->reward_amount,
-//             'reward_type'   => 'rank_achievement',
-//             'status'        => 'processed',
-//             'processed_at'  => now()
-//         ]);
-
-//         if ($currentRank->reward_amount > 0) {
-//             $user->increment('balance', $currentRank->reward_amount);
-//             $newBalance = $user->fresh()->balance;
-            
-//             History::create([
-//                 'user_id' => $user->id,
-//                 'type'    => 'rank_achievement_bonus',
-//                 'amount'  => $currentRank->reward_amount,
-//             ]);
-//         }
-//     }
-
-//     // AUTO UPGRADE to next rank if exists
-//     $upgradedToRank = $oldRank;
-//     if ($nextRank) {
-//         $user->update([
-//             'rank' => $nextRank->rank,
-//             'rank_upgraded_at' => now()
-//         ]);
-//         $upgradedToRank = $nextRank->rank;
-        
-//         // Update rank_reward entry with new rank
-//         if (isset($rankReward)) {
-//             $rankReward->update(['new_rank' => $nextRank->rank]);
-//         }
-        
-//         $message = "Claimed {$currentRank->rank_name} reward & upgraded to {$nextRank->rank_name}!";
-//         $newRankName = $nextRank->rank_name;
-//     } else {
-//         $message = "Claimed {$currentRank->rank_name} reward!";
-//         $newRankName = $currentRank->rank_name;
-//     }
-
-//     // Create log entry with correct data
-//     \App\Models\Log::create([
-//         'user_id'          => $user->id,
-//         'transaction_type' => 'rank_reward_auto',
-//         'amount'           => $currentRank->reward_amount,
-//         'previous_balance' => $previousBalance,
-//         'new_balance'      => $user->fresh()->balance,
-//         'reference_type'   => 'App\Models\RankReward',
-//         'reference_id'     => $rankReward->id ?? null,
-//         'description'      => "Auto-approved rank reward - Rank {$oldRank} to {$upgradedToRank}",
-//         'metadata'         => json_encode([
-//             'old_rank' => $oldRank,
-//             'new_rank' => $upgradedToRank,
-//             'reward_type' => 'rank_achievement',
-//             'reward_amount' => $currentRank->reward_amount
-//         ]),
-//         'status'           => 'completed',
-//         'ip_address'       => request()->ip(),
-//         'user_agent'       => request()->userAgent(),
-//     ]);
-
-//     DB::commit();
-    
-//     return response()->json([
-//         'success' => true,
-//         'message' => $message,
-//         'data'    => [
-//             'rank'      => $user->fresh()->rank,
-//             'rank_name' => $newRankName,
-//             'reward'    => $currentRank->reward_amount,
-//             'balance'   => $user->fresh()->balance
-//         ]
-//     ]);
-// } catch (\Exception $e) {
-//     DB::rollBack();
-//     \Log::error('FAILED: ' . $e->getMessage());
-    
-//     return response()->json([
-//         'success' => false, 
-//         'message' => 'Upgrade failed: ' . $e->getMessage()
-//     ]);
-// }
-
-// }
 
 public function upgrade(Request $request)
 {
@@ -305,6 +183,14 @@ try {
             'ip_address'       => request()->ip(),
             'user_agent'       => request()->userAgent(),
         ]);
+
+        // Send email notification to user
+        try {
+            $oldRankName = $oldRank > 0 ? RankRequirement::where('rank', $oldRank)->first()?->rank_name : null;
+            $user->notify(new RankRewardNotification($rankReward, $oldRankName, $newRankName));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send rank reward email: ' . $e->getMessage());
+        }
     }
 
     DB::commit();

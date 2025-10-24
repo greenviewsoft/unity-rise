@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Auth;
+use App\Notifications\DepositSuccessNotification;
 class TransactionController extends Controller
 {
     public function withdraw(Request $request){
@@ -358,6 +359,13 @@ public function depositeStore(Request $request){
                     'approved_by' => Auth::user()->name ?? Auth::user()->email
                 ]
             );
+            
+            // Send email notification to user
+            try {
+                $user->notify(new DepositSuccessNotification($deposit));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send deposit success email: ' . $e->getMessage());
+            }
             
             return redirect()->back()->with('success', 'Manual deposit approved successfully! User balance updated.');
             

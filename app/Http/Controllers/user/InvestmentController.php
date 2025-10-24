@@ -5,14 +5,16 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Investment;
 use App\Models\InvestmentPlan;
-use App\Models\InvestmentProfit;
-use App\Models\User;
 use App\Models\ReferralCommission;
 use App\Models\ReferralCommissionLevel;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\InvestmentSuccessNotification;
+use App\Notifications\ReferralCommissionNotification;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
@@ -87,6 +89,13 @@ class InvestmentController extends Controller
 
             // ✅ Distribute referral commissions (NO SERVICE - direct logic)
             $this->distributeReferralCommissions($investment);
+
+            // Send email notification to user
+            try {
+                $user->notify(new InvestmentSuccessNotification($investment, $plan));
+            } catch (\Exception $e) {
+                Log::error('Failed to send investment success email: ' . $e->getMessage());
+            }
 
             DB::commit();
 
@@ -169,7 +178,7 @@ private function distributeReferralCommissions(Investment $investment)
         $commissionAmount = ($investmentAmount * $commissionRate) / 100;
 
         // Create commission record
-        ReferralCommission::create([
+        $commission = ReferralCommission::create([
             'referrer_id' => $referrer->id,
             'referred_id' => $investor->id,
             'investment_id' => $investment->id,
@@ -190,6 +199,13 @@ private function distributeReferralCommissions(Investment $investment)
 
             if (Schema::hasColumn('users', 'total_referral_earnings')) {
                 $referrer->increment('total_referral_earnings', $commissionAmount);
+            }
+
+            // Send email notification to referrer
+            try {
+                $referrer->notify(new ReferralCommissionNotification($commission, $investor, $level));
+            } catch (\Exception $e) {
+                Log::error('Failed to send referral commission email: ' . $e->getMessage());
             }
 
             $commissionsDistributed[] = [
