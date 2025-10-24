@@ -10,6 +10,7 @@ use App\Models\Log;
 use App\Services\BscService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log as LaravelLog;
+use App\Notifications\DepositSuccessNotification;
 use Exception;
 
 class Bep20DepositService
@@ -371,6 +372,13 @@ class Bep20DepositService
                 'previous_balance' => $previousBalance,
                 'new_balance' => $newBalance
             ]);
+            
+            // Send email notification to user
+            try {
+                $user->notify(new DepositSuccessNotification($deposit));
+            } catch (\Exception $e) {
+                LaravelLog::error('Failed to send deposit success email: ' . $e->getMessage());
+            }
             
             return [
                 'success' => true,
