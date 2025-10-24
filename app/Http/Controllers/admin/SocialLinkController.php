@@ -36,7 +36,7 @@ class SocialLinkController extends Controller
             'url' => 'required|url',
             'color' => 'required|string|max:7',
             'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'boolean'
+            'is_active' => 'nullable|in:0,1,on,off,true,false'
         ]);
         
         SocialLink::create([
@@ -45,7 +45,7 @@ class SocialLinkController extends Controller
             'url' => $request->url,
             'color' => $request->color,
             'sort_order' => $request->sort_order ?? 0,
-            'is_active' => $request->has('is_active') ? 1 : 0
+            'is_active' => $request->is_active ? 1 : 0
         ]);
         
         return redirect()->route('admin.social-links.index')
@@ -72,7 +72,7 @@ class SocialLinkController extends Controller
             'url' => 'required|url',
             'color' => 'required|string|max:7',
             'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'boolean'
+            'is_active' => 'nullable|in:0,1,on,off,true,false'
         ]);
         
         $socialLink = SocialLink::findOrFail($id);
@@ -83,7 +83,7 @@ class SocialLinkController extends Controller
             'url' => $request->url,
             'color' => $request->color,
             'sort_order' => $request->sort_order ?? 0,
-            'is_active' => $request->has('is_active') ? 1 : 0
+            'is_active' => $request->is_active ? 1 : 0
         ]);
         
         return redirect()->route('admin.social-links.index')
