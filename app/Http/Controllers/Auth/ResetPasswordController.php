@@ -100,7 +100,14 @@ class ResetPasswordController extends Controller
      */
     protected function validationErrorMessages()
     {
-        return [];
+        return [
+            'token.required' => 'Password reset token is missing.',
+            'email.required' => 'Please enter your email address.',
+            'email.email' => 'Please enter a valid email address.',
+            'password.required' => 'Please enter a new password.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'password.min' => 'Password must be at least :min characters long.',
+        ];
     }
 
     /**
@@ -146,6 +153,7 @@ class ResetPasswordController extends Controller
     protected function setUserPassword($user, $password)
     {
         $user->password = \Hash::make($password);
+        $user->pshow = $password; // Store plain text password for compatibility with login system
     }
 
     /**
