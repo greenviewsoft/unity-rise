@@ -214,6 +214,7 @@ public function depositeStore(Request $request){
     $deposite->currency = 'USDT';
     $deposite->deposit_type = 'admin'; // Mark as admin deposit
     $deposite->status = '1';
+    $deposite->created_at = now(); // Ensure created_at is set
     $deposite->save();
         // Update user balance and create transaction log
         $previousBalance = $user->balance;
@@ -238,6 +239,34 @@ public function depositeStore(Request $request){
                  'currency' => 'USDT'
             ]
         );
+
+        // Send deposit success notification email
+        \Log::info('Attempting to send deposit success email for admin deposit', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'deposit_id' => $deposite->id,
+            'deposit_amount' => $deposite->amount
+        ]);
+        
+        try {
+            $notification = new DepositSuccessNotification($deposite);
+            \Log::info('DepositSuccessNotification created successfully for admin deposit');
+            
+            $user->notify($notification);
+            \Log::info('Deposit success email sent successfully for admin deposit', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'deposit_id' => $deposite->id
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send deposit success email for admin deposit', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'deposit_id' => $deposite->id
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Deposite created successfully');
     }
@@ -360,11 +389,32 @@ public function depositeStore(Request $request){
                 ]
             );
             
-            // Send email notification to user
+            // Send deposit success notification email
+            \Log::info('Attempting to send deposit success email', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'deposit_id' => $deposit->id,
+                'deposit_amount' => $deposit->amount
+            ]);
+            
             try {
-                $user->notify(new DepositSuccessNotification($deposit));
+                $notification = new DepositSuccessNotification($deposit);
+                \Log::info('DepositSuccessNotification created successfully');
+                
+                $user->notify($notification);
+                \Log::info('Deposit success email sent successfully', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'deposit_id' => $deposit->id
+                ]);
             } catch (\Exception $e) {
-                \Log::error('Failed to send deposit success email: ' . $e->getMessage());
+                \Log::error('Failed to send deposit success email', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'deposit_id' => $deposit->id
+                ]);
             }
             
             return redirect()->back()->with('success', 'Manual deposit approved successfully! User balance updated.');

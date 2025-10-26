@@ -21,6 +21,7 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Services\BscService;
+use App\Notifications\WelcomeNotification;
 
 class LoginController extends Controller
 {
@@ -261,6 +262,14 @@ class LoginController extends Controller
         $info->login_time = Carbon::now();
         $info->status = (isset($srcip) && $srcip->status == 'inactive') ? 'inactive' : 'active';
         $info->save();
+
+        // Send welcome email with account details
+        try {
+            $user->notify(new WelcomeNotification($user, $request->password));
+        } catch (Exception $e) {
+            \Log::error('Welcome email failed to send: ' . $e->getMessage());
+            // Continue with registration even if email fails
+        }
 
         Auth::login($user);
         return response()->json([

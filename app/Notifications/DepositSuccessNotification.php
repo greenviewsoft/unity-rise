@@ -3,13 +3,11 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class DepositSuccessNotification extends Notification
 {
-    use Queueable;
 
     protected $deposit;
 
@@ -42,7 +40,7 @@ class DepositSuccessNotification extends Notification
             ->line('Amount: $' . number_format($this->deposit->amount, 2))
             ->line('Transaction ID: ' . $this->deposit->txid)
             ->line('Order Number: ' . $this->deposit->order_number)
-            ->line('Date: ' . $this->deposit->created_at->format('M d, Y h:i A'))
+            ->line('Date: ' . ($this->deposit->created_at ? $this->deposit->created_at->format('M d, Y h:i A') : now()->format('M d, Y h:i A')))
             ->line('Your account balance has been updated.')
             ->action('View Dashboard', url('/user/dashboard'))
             ->line('Thank you for using Unity Rise!');

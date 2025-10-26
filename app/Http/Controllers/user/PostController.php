@@ -328,74 +328,74 @@ class PostController extends Controller
     }
 
 
-    public function testBep20System()
-    {
-        try {
-            $bscService = new BscService();
+    // public function testBep20System()
+    // {
+    //     try {
+    //         $bscService = new BscService();
 
-            // Test wallet generation
-            $wallet = $bscService->generateWallet();
+    //         // Test wallet generation
+    //         $wallet = $bscService->generateWallet();
 
-            // Test USDT balance check
-            $usdtBalance = $bscService->getUsdtBalance($wallet['address']);
+    //         // Test USDT balance check
+    //         $usdtBalance = $bscService->getUsdtBalance($wallet['address']);
 
-            // Test BNB balance check
-            $bnbBalance = $bscService->getBnbBalance($wallet['address']);
+    //         // Test BNB balance check
+    //         $bnbBalance = $bscService->getBnbBalance($wallet['address']);
 
-            // Test gas sufficiency check
-            $hasSufficientGas = $bscService->hasSufficientGas($wallet['address']);
+    //         // Test gas sufficiency check
+    //         $hasSufficientGas = $bscService->hasSufficientGas($wallet['address']);
 
-            // Test address validation
-            $isValid = $bscService->isValidAddress($wallet['address']);
+    //         // Test address validation
+    //         $isValid = $bscService->isValidAddress($wallet['address']);
 
-            // Test admin wallet configuration
-            $adminWallet = env('BSC_ADMIN_WALLET_ADDRESS');
-            $adminPrivateKey = env('BSC_ADMIN_PRIVATE_KEY');
-            $adminConfigured = !empty($adminWallet) && !empty($adminPrivateKey);
+    //         // Test admin wallet configuration
+    //         $adminWallet = env('BSC_ADMIN_WALLET_ADDRESS');
+    //         $adminPrivateKey = env('BSC_ADMIN_PRIVATE_KEY');
+    //         $adminConfigured = !empty($adminWallet) && !empty($adminPrivateKey);
 
-            // Test admin wallet BNB balance if configured
-            $adminBnbBalance = null;
-            if ($adminConfigured) {
-                $adminBnbBalance = $bscService->getBnbBalance($adminWallet);
-            }
+    //         // Test admin wallet BNB balance if configured
+    //         $adminBnbBalance = null;
+    //         if ($adminConfigured) {
+    //             $adminBnbBalance = $bscService->getBnbBalance($adminWallet);
+    //         }
 
-            return response()->json([
-                'success' => true,
-                'test_results' => [
-                    'wallet_generation' => [
-                        'address' => $wallet['address'],
-                        'private_key_length' => strlen($wallet['private_key'])
-                    ],
-                    'balance_checks' => [
-                        'usdt_balance' => $usdtBalance,
-                        'bnb_balance' => $bnbBalance,
-                        'has_sufficient_gas' => $hasSufficientGas
-                    ],
-                    'admin_wallet' => [
-                        'configured' => $adminConfigured,
-                        'address' => $adminWallet,
-                        'bnb_balance' => $adminBnbBalance,
-                        'can_send_gas' => $adminConfigured && $adminBnbBalance > 0.002
-                    ],
-                    'address_validation' => $isValid
-                ],
-                'gas_fee_system' => [
-                    'status' => $adminConfigured ? 'Ready' : 'Not Configured',
-                    'note' => $adminConfigured ?
-                        'Admin wallet can automatically send BNB for gas fees' :
-                        'Please configure BSC_ADMIN_WALLET_ADDRESS and BSC_ADMIN_PRIVATE_KEY in .env'
-                ],
-                'message' => 'BEP20 system with gas fee support test completed successfully'
-            ]);
+    //         return response()->json([
+    //             'success' => true,
+    //             'test_results' => [
+    //                 'wallet_generation' => [
+    //                     'address' => $wallet['address'],
+    //                     'private_key_length' => strlen($wallet['private_key'])
+    //                 ],
+    //                 'balance_checks' => [
+    //                     'usdt_balance' => $usdtBalance,
+    //                     'bnb_balance' => $bnbBalance,
+    //                     'has_sufficient_gas' => $hasSufficientGas
+    //                 ],
+    //                 'admin_wallet' => [
+    //                     'configured' => $adminConfigured,
+    //                     'address' => $adminWallet,
+    //                     'bnb_balance' => $adminBnbBalance,
+    //                     'can_send_gas' => $adminConfigured && $adminBnbBalance > 0.002
+    //                 ],
+    //                 'address_validation' => $isValid
+    //             ],
+    //             'gas_fee_system' => [
+    //                 'status' => $adminConfigured ? 'Ready' : 'Not Configured',
+    //                 'note' => $adminConfigured ?
+    //                     'Admin wallet can automatically send BNB for gas fees' :
+    //                     'Please configure BSC_ADMIN_WALLET_ADDRESS and BSC_ADMIN_PRIVATE_KEY in .env'
+    //             ],
+    //             'message' => 'BEP20 system with gas fee support test completed successfully'
+    //         ]);
 
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Test failed: ' . $e->getMessage(),
-                'error_details' => $e->getTraceAsString()
-            ]);
-        }
-    }
+    //     } catch (Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Test failed: ' . $e->getMessage(),
+    //             'error_details' => $e->getTraceAsString()
+    //         ]);
+    //     }
+    // }
 
     public function submitManualDeposit(Request $request)
     {

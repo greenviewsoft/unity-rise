@@ -40,17 +40,23 @@ class InvestmentSuccessNotification extends Notification
         
         return (new MailMessage)
             ->subject('Investment Successful - Unity Rise')
-            ->greeting('Hello ' . $notifiable->name . '!')
+            ->greeting('Hello ' . $this->investment->user->name . '!')
             ->line('Your investment has been successfully created.')
-            ->line('**Investment Details:**')
-            ->line('Plan: ' . $planName)
+            ->line('')
+            ->line('Investment Details:')
+            ->line('')
+            ->line('Plan: ' . ($this->plan ? $this->plan->name : 'N/A'))
+            ->line('')
             ->line('Amount: $' . number_format($this->investment->amount, 2))
-            ->line('Duration: ' . ($this->plan ? $this->plan->duration . ' days' : 'N/A'))
-            ->line('Expected Return: ' . ($this->plan ? $this->plan->profit_percentage . '%' : 'N/A'))
+            ->line('')
+            ->line('Duration: ' . ($this->plan ? $this->plan->duration_days : 'N/A') . ' days')
+            ->line('')
+            ->line('Expected Return: ' . ($this->plan ? $this->plan->total_profit_percentage : 'N/A') . '%')
+            ->line('')
             ->line('Date: ' . $this->investment->created_at->format('M d, Y h:i A'))
+            ->line('')
             ->line('Your investment is now active and generating returns.')
-            ->action('View Investments', url('/user/investment'))
-            ->line('Thank you for investing with Unity Rise!');
+            ->action('View Investments', url('/user/investments'));
     }
 
     /**

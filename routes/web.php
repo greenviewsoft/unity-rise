@@ -362,6 +362,45 @@ Route::get('run-profit', function () {
     return '✅ Profit distributed manually for today!';
 });
 
+// Test welcome email functionality
+Route::get('test-welcome-email', function () {
+    try {
+        // Create a test user object (not saved to database)
+        $testUser = new \App\Models\User([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '1234567890',
+            'invitation_code' => 'TEST123'
+        ]);
+        
+        // Set a test password for the email
+        $testPassword = 'TestPassword123';
+        
+        // Send welcome notification
+        $testUser->notify(new \App\Notifications\WelcomeNotification($testUser, $testPassword));
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Welcome email sent successfully to test@example.com',
+            'user_data' => [
+                'name' => $testUser->name,
+                'email' => $testUser->email,
+                'phone' => $testUser->phone,
+                'invitation_code' => $testUser->invitation_code
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to send welcome email: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+});
+
+
+
 // cache clear
 Route::get('reboot', function () {
     Artisan::call('config:cache');

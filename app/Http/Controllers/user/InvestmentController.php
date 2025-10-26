@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Log;
 use App\Notifications\InvestmentSuccessNotification;
 use App\Notifications\ReferralCommissionNotification;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
 
 class InvestmentController extends Controller
 {
