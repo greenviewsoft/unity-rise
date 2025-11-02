@@ -203,9 +203,9 @@ class PostController extends Controller
             return response()->json(['error' => 'BEP20 withdrawal settings not configured']);
         }
 
-        // ✅ Step 6: Check balance and limits
+        // ✅ Step 6: Check balance and limits (use net wallet balance)
         $balance = $user->balance;
-        $authBal = floor($balance - $totalDeposit);
+        $authBal = floor($balance);
 
         if ($authBal <= $settingBep20->min_withdraw) {
             return response()->json(['error' => 'Min withdraw balance is ' . $settingBep20->min_withdraw . ' USD']);

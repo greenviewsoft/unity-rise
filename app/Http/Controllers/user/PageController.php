@@ -321,16 +321,11 @@ class PageController extends Controller
             ];
         }
     
-        // check total deposit
-        $totalDeposit = Deposite::where('user_id', Auth::user()->id)->sum('amount');
-    
-        // check balance
+        // Available balance for withdraw should reflect the user's net wallet balance
+        // Do not subtract deposits; deposits and withdrawals already affect balance.
         $balance = Auth::user()->balance;
-    
-        // remove decimal part
-        $pattern = '/\.\d+/';
-        $authbal = preg_replace($pattern, '', $balance) - $totalDeposit;
-    
+        $authbal = (int) floor($balance);
+
         return view('user.withdraw', compact('settingbep20', 'authbal'));
     }
 

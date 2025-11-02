@@ -86,14 +86,41 @@ class TransactionController extends Controller
 
     public function withdrawStore($status, $id){
 
-        $withdraw = Withdraw::find($id);
+    $withdraw = Withdraw::find($id);
+    $user = User::find($withdraw->user_id);
 
-        if($status == '2'){
-            $withdraw->status = '2';
-            $withdraw->save();
+    if ($status == '2') {
+        // Withdraw বাতিল
+        $withdraw->status = '2';
+        $withdraw->save();
 
-            return redirect()->back()->with('error', 'Witdraw rejected');
+        // ✅ User এর balance ফেরত দাও
+        if ($user) {
+            $previousBalance = $user->balance;
+            $refundAmount = $withdraw->exact_amount; // আসল কাটা পরিমাণ
+            $user->increment('balance', $refundAmount);
+            $newBalance = $user->fresh()->balance;
+
+            // ✅ Optional: Transaction Log তৈরি করো
+            \App\Models\Log::createTransactionLog(
+                $user->id,
+                'withdraw_refund',
+                $refundAmount,
+                $previousBalance,
+                $newBalance,
+                'App\\Models\\Withdraw',
+                $withdraw->id,
+                'Withdraw request rejected, amount refunded to wallet',
+                [
+                    'withdraw_id' => $withdraw->id,
+                    'refund_reason' => 'Admin rejected withdraw request',
+                    'currency' => 'USDT',
+                ]
+            );
         }
+
+        return redirect()->back()->with('error', 'Withdraw rejected, amount refunded to user wallet');
+    }
         $withdraw->status = '1';
         $withdraw->save();
         return redirect()->back()->with('success', 'Witdraw successful');
